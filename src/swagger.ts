@@ -10,12 +10,28 @@ const options = {
     },
     servers: [
       {
-        url: 'http://localhost:3000', // Your API base URL
+        url: 'http://localhost:3000',
+      },
+    ],
+    components: {
+      securitySchemes: {
+        bearerAuth: {
+          type: 'http',
+          scheme: 'bearer',
+          bearerFormat: 'JWT',
+        },
+      },
+    },
+    security: [
+      {
+        bearerAuth: [],
       },
     ],
   },
-  apis: ['./controllers/*.js'], // Path to the API routes (adjust the path if necessary)
+  apis: ['./controllers/*.ts'],
 };
 
-const specs = swaggerJsdoc(options);
-module.exports = specs;
+module.exports = swaggerJsdoc(options);
+
+
+
