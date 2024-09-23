@@ -1,0 +1,150 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+model Technician {
+  id                 String             @id @default(uuid())
+  username           String             @unique // Changed from name to username
+  password           String // Added password field
+  categoryId         Int
+  category           Category           @relation(fields: [categoryId], references: [id])
+  role               Role               @default(TECHNICIAN)
+  services           Service[]
+  ratings            Rating[]
+  location           Location?
+  documents          String? // URL or file path of the uploaded document
+  verificationStatus VerificationStatus @default(PENDING) // Document verification status
+  createdAt          DateTime           @default(now())
+  updatedAt          DateTime           @updatedAt
+  ServiceRequest     ServiceRequest[]
+  Appointment        Appointment[]
+}
+
+model User {
+  id             String           @id @default(uuid())
+  username       String           @unique // Changed from name to username
+  password       String // Added password field
+  email          String           @unique
+  role           Role             @default(USER)
+  ratings        Rating[]
+  createdAt      DateTime         @default(now())
+  updatedAt      DateTime         @updatedAt
+  ServiceRequest ServiceRequest[]
+  Appointment    Appointment[]
+}
+
+model Service {
+  id           Int        @id @default(autoincrement())
+  name         String
+  price        Float
+  technicianId String // Referencing Technician UUID (String)
+  technician   Technician @relation(fields: [technicianId], references: [id])
+  createdAt    DateTime   @default(now())
+  updatedAt    DateTime   @updatedAt
+}
+
+model Category {
+  id          Int          @id @default(autoincrement())
+  name        String       @unique
+  technicians Technician[]
+}
+
+model Rating {
+  id           Int        @id @default(autoincrement())
+  score        Int // Rating out of 5
+  comment      String?
+  technicianId String // Referencing Technician UUID (String)
+  technician   Technician @relation(fields: [technicianId], references: [id])
+  userId       String // Referencing User UUID (String)
+  user         User       @relation(fields: [userId], references: [id])
+  createdAt    DateTime   @default(now())
+}
+
+model Location {
+  id           Int        @id @default(autoincrement())
+  latitude     Float
+  longitude    Float
+  address      String
+  technicianId String     @unique // Unique for one-to-one relationship
+  technician   Technician @relation(fields: [technicianId], references: [id])
+}
+
+model ServiceRequest {
+  id           Int           @id @default(autoincrement())
+  clientId     String // Changed to String (UUID) to match User.id
+  client       User          @relation(fields: [clientId], references: [id])
+  serviceType  String // Type of service needed (e.g., "plumbing", "electrical")
+  latitude     Float // Client's latitude
+  longitude    Float // Client's longitude
+  status       RequestStatus @default(PENDING) // Status of the request
+  technicianId String? // Changed to String (UUID) to match Technician.id
+  technician   Technician?   @relation(fields: [technicianId], references: [id])
+  createdAt    DateTime      @default(now())
+}
+
+model Appointment {
+  id              Int               @id @default(autoincrement())
+  clientId        String // Client (User) who requested the service
+  client          User              @relation(fields: [clientId], references: [id])
+  technicianId    String // Technician assigned to the service
+  technician      Technician        @relation(fields: [technicianId], references: [id])
+  serviceType     String // Type of service
+  appointmentDate DateTime // When the service is scheduled
+  status          AppointmentStatus @default(SCHEDULED) // Status of the appointment
+  createdAt       DateTime          @default(now())
+  Payment         Payment[]
+}
+
+model RateCard {
+  id          Int      @id @default(autoincrement())
+  serviceType String   @unique // Mark serviceType as unique
+  minPrice    Float // Minimum price for the service
+  maxPrice    Float // Maximum price for the service
+  createdAt   DateTime @default(now())
+}
+
+model Payment {
+  id            Int           @id @default(autoincrement())
+  appointmentId Int
+  appointment   Appointment   @relation(fields: [appointmentId], references: [id])
+  transactionId String        @unique // Mark transactionId as unique
+  amount        Float
+  status        PaymentStatus @default(PENDING)
+  createdAt     DateTime      @default(now())
+}
+
+enum PaymentStatus {
+  PENDING
+  COMPLETED
+  FAILED
+}
+
+enum VerificationStatus {
+  PENDING
+  APPROVED
+  REJECTED
+}
+
+enum AppointmentStatus {
+  SCHEDULED
+  COMPLETED
+  CANCELED
+}
+
+enum RequestStatus {
+  PENDING
+  ACCEPTED
+  COMPLETED
+  CANCELLED
+}
+
+enum Role {
+  USER
+  TECHNICIAN
+  ADMIN
+}
