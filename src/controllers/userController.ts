@@ -3,6 +3,93 @@ import { hashPassword, comparePassword, createJWT } from '../modules/auth';
 
 const prisma = new PrismaClient();
 
+/**
+ * @swagger
+ * tags:
+ *   name: Users
+ *   description: API for managing users
+ */
+
+/**
+ * @swagger
+ * /users:
+ *   post:
+ *     summary: Create a new user
+ *     tags: [Users]
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             type: object
+ *             properties:
+ *               username:
+ *                 type: string
+ *                 example: johndoe
+ *               password:
+ *                 type: string
+ *                 example: password123
+ *               email:
+ *                 type: string
+ *                 example: johndoe@example.com
+ *     responses:
+ *       201:
+ *         description: User created successfully
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 token:
+ *                   type: string
+ *                   example: eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9...
+ *       400:
+ *         description: Invalid input
+ *       500:
+ *         description: Internal server error
+ */
+
+/**
+ * @swagger
+ * /login:
+ *   post:
+ *     summary: Log in a user
+ *     tags: [Users]
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             type: object
+ *             properties:
+ *               username:
+ *                 type: string
+ *                 example: johndoe
+ *               password:
+ *                 type: string
+ *                 example: password123
+ *     responses:
+ *       200:
+ *         description: User logged in successfully
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 token:
+ *                   type: string
+ *                   example: eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9...
+ *       401:
+ *         description: Invalid credentials
+ *       404:
+ *         description: User not found
+ *       500:
+ *         description: Internal server error
+ */
+
+// Your user routes implementation here
+
+
 export const getUsers = async (req, res) => {
     try {
         const users = await prisma.user.findMany();

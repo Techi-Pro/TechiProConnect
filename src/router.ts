@@ -16,12 +16,73 @@ const prisma = new PrismaClient();
 /**
  * Technicians
  */
+
+
+/**
+ * @swagger
+ * /technicians:
+ *   get:
+ *     summary: Retrieve a list of technicians
+ *     tags: [Technicians]
+ *     responses:
+ *       200:
+ *         description: A list of technicians
+ */
 router.get('/technicians', getTechnicians);
 
+
+/**
+ * @swagger
+ * /technicians/{id}:
+ *   get:
+ *     summary: Get a technician by ID
+ *     tags: [Technicians]
+ *     parameters:
+ *       - in: path
+ *         name: id
+ *         schema:
+ *           type: string
+ *         required: true
+ *         description: The technician ID
+ *     responses:
+ *       200:
+ *         description: Technician data
+ *       404:
+ *         description: Technician not found
+ */
 router.get('/technicians/:id', 
   handleInputErrors, 
   getTechnician
 );
+
+
+/**
+ * @swagger
+ * /technicians:
+ *   post:
+ *     summary: Create a new technician
+ *     tags: [Technicians]
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         multipart/form-data:
+ *           schema:
+ *             type: object
+ *             properties:
+ *               username:
+ *                 type: string
+ *               password:
+ *                 type: string
+ *                 format: password
+ *               categoryId:
+ *                 type: integer
+ *               document:
+ *                 type: string
+ *                 format: binary
+ *     responses:
+ *       201:
+ *         description: Technician created
+ */
 
 router.post('/technicians', 
   body('username').isString().withMessage('Username must be a string'),
@@ -31,6 +92,38 @@ router.post('/technicians',
   upload.single('document'),
   createTechnician
 );
+
+
+/**
+ * @swagger
+ * /technicians/{id}:
+ *   put:
+ *     summary: Update a technician
+ *     tags: [Technicians]
+ *     parameters:
+ *       - in: path
+ *         name: id
+ *         schema:
+ *           type: string
+ *         required: true
+ *         description: Technician ID
+ *     requestBody:
+ *       content:
+ *         application/json:
+ *           schema:
+ *             type: object
+ *             properties:
+ *               username:
+ *                 type: string
+ *               password:
+ *                 type: string
+ *                 format: password
+ *               categoryId:
+ *                 type: integer
+ *     responses:
+ *       200:
+ *         description: Technician updated
+ */
 
 router.put('/technicians/:id', 
   body('username').optional().isString().withMessage('Username must be a string'),
@@ -42,6 +135,25 @@ router.put('/technicians/:id',
    
 );
 
+
+/**
+ * @swagger
+ * /technicians/{id}:
+ *   delete:
+ *     summary: Delete a technician
+ *     tags: [Technicians]
+ *     parameters:
+ *       - in: path
+ *         name: id
+ *         schema:
+ *           type: string
+ *         required: true
+ *         description: Technician ID
+ *     responses:
+ *       200:
+ *         description: Technician deleted
+ */
+
 router.delete('/technicians/:id', 
   handleInputErrors,
   deleteTechnician
@@ -51,9 +163,40 @@ router.delete('/technicians/:id',
 /**
  * Services
  */
+
+
+/**
+ * @swagger
+ * /services:
+ *   get:
+ *     summary: Retrieve a list of services
+ *     tags: [Services]
+ *     responses:
+ *       200:
+ *         description: A list of services
+ */
 router.get('/services', 
   getServices
 );
+
+
+/**
+ * @swagger
+ * /services/{id}:
+ *   get:
+ *     summary: Get a service by ID
+ *     tags: [Services]
+ *     parameters:
+ *       - in: path
+ *         name: id
+ *         schema:
+ *           type: string
+ *         required: true
+ *         description: Service ID
+ *     responses:
+ *       200:
+ *         description: Service data
+ */
 
 router.get('/services/:id', 
   handleInputErrors, 
