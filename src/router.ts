@@ -204,6 +204,32 @@ router.get('/services/:id',
     
 );
 
+/**
+ * @swagger
+ * /services:
+ *   post:
+ *     summary: Create a new service
+ *     tags: [Services]
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             type: object
+ *             properties:
+ *               name:
+ *                 type: string
+ *               price:
+ *                 type: number
+ *               technicianId:
+ *                 type: string
+ *                 format: uuid
+ *     responses:
+ *       201:
+ *         description: Service created
+ */
+
+
 router.post('/services', 
   body('name').isString().withMessage('Name must be a string'),
   body('price').isFloat({ gt: 0 }).withMessage('Price must be a positive number'),
@@ -213,6 +239,35 @@ router.post('/services',
     
 );
 
+
+/**
+ * @swagger
+ * /services/{id}:
+ *   put:
+ *     summary: Update a service by ID
+ *     tags: [Services]
+ *     parameters:
+ *       - in: path
+ *         name: id
+ *         schema:
+ *           type: string
+ *         required: true
+ *         description: Service ID
+ *     requestBody:
+ *       content:
+ *         application/json:
+ *           schema:
+ *             type: object
+ *             properties:
+ *               name:
+ *                 type: string
+ *               price:
+ *                 type: number
+ *     responses:
+ *       200:
+ *         description: Service updated
+ */
+
 router.put('/services/:id', 
   body('name').optional().isString().withMessage('Name must be a string'),
   body('price').optional().isFloat({ gt: 0 }).withMessage('Price must be a positive number'),
@@ -220,6 +275,25 @@ router.put('/services/:id',
   updateService
     
 );
+
+
+/**
+ * @swagger
+ * /services/{id}:
+ *   delete:
+ *     summary: Delete a service by ID
+ *     tags: [Services]
+ *     parameters:
+ *       - in: path
+ *         name: id
+ *         schema:
+ *           type: string
+ *         required: true
+ *         description: Service ID
+ *     responses:
+ *       200:
+ *         description: Service deleted
+ */
 
 router.delete('/services/:id', 
   handleInputErrors, 
@@ -230,10 +304,43 @@ router.delete('/services/:id',
 /**
  * Categories
  */
+
+
+/**
+ * @swagger
+ * /categories:
+ *   get:
+ *     summary: Retrieve a list of categories
+ *     tags: [Categories]
+ *     responses:
+ *       200:
+ *         description: A list of categories
+ */
 router.get('/categories', 
   getCategories
 
 );
+
+
+/**
+ * @swagger
+ * /categories:
+ *   post:
+ *     summary: Create a new category
+ *     tags: [Categories]
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             type: object
+ *             properties:
+ *               name:
+ *                 type: string
+ *     responses:
+ *       201:
+ *         description: Category created
+ */
 
 router.post('/categories', 
   body('name').isString().withMessage('Name must be a string'),
@@ -245,11 +352,62 @@ router.post('/categories',
 /**
  * Ratings
  */
+
+
+/**
+ * @swagger
+ * /ratings/technician/{technicianId}:
+ *   get:
+ *     summary: Retrieve ratings for a specific technician
+ *     tags: [Ratings]
+ *     parameters:
+ *       - in: path
+ *         name: technicianId
+ *         schema:
+ *           type: string
+ *           format: uuid
+ *         required: true
+ *         description: Technician ID
+ *     responses:
+ *       200:
+ *         description: List of ratings for the technician
+ */
 router.get('/ratings/technician/:technicianId', 
   handleInputErrors,
   getRatingsByTechnician
     
 );
+
+
+/**
+ * @swagger
+ * /ratings:
+ *   post:
+ *     summary: Create a new rating
+ *     tags: [Ratings]
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             type: object
+ *             properties:
+ *               score:
+ *                 type: integer
+ *                 minimum: 1
+ *                 maximum: 5
+ *               comment:
+ *                 type: string
+ *               technicianId:
+ *                 type: string
+ *                 format: uuid
+ *               userId:
+ *                 type: string
+ *                 format: uuid
+ *     responses:
+ *       201:
+ *         description: Rating created
+ */
 
 router.post('/ratings', 
   body('score').isInt({ min: 1, max: 5 }).withMessage('Score must be an integer between 1 and 5'),
@@ -264,6 +422,37 @@ router.post('/ratings',
 /**
  * Locations
  */
+
+/**
+ * @swagger
+ * /technicians/{id}/location:
+ *   post:
+ *     summary: Upsert technician's location
+ *     tags: [Locations]
+ *     parameters:
+ *       - in: path
+ *         name: id
+ *         schema:
+ *           type: string
+ *         required: true
+ *         description: Technician ID
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             type: object
+ *             properties:
+ *               latitude:
+ *                 type: number
+ *               longitude:
+ *                 type: number
+ *               address:
+ *                 type: string
+ *     responses:
+ *       200:
+ *         description: Location updated
+ */
 router.post('/technicians/:id/location', 
   body('latitude').isFloat().withMessage('Latitude must be a number'),
   body('longitude').isFloat().withMessage('Longitude must be a number'),
@@ -276,6 +465,33 @@ router.post('/technicians/:id/location',
 
 /**
  * Service Requests
+ */
+
+
+/**
+ * @swagger
+ * /service-requests:
+ *   post:
+ *     summary: Create a new service request
+ *     tags: [Service Requests]
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             type: object
+ *             properties:
+ *               clientId:
+ *                 type: string
+ *               serviceType:
+ *                 type: string
+ *               latitude:
+ *                 type: number
+ *               longitude:
+ *                 type: number
+ *     responses:
+ *       201:
+ *         description: Service request created
  */
 router.post('/service-requests', async (req, res) => {
   try {
@@ -297,6 +513,27 @@ router.post('/service-requests', async (req, res) => {
     res.status(500).json({ message: 'Failed to create service request' });
   }
 });
+
+
+/**
+ * @swagger
+ * /service-requests/{id}/match:
+ *   post:
+ *     summary: Match service request to closest technician
+ *     tags: [Service Requests]
+ *     parameters:
+ *       - in: path
+ *         name: id
+ *         schema:
+ *           type: string
+ *         required: true
+ *         description: Service request ID
+ *     responses:
+ *       200:
+ *         description: Technician assigned to the service request
+ *       404:
+ *         description: No technicians available for this service
+ */
 
 router.post('/service-requests/:id/match', async (req, res) => {
   try {
@@ -364,6 +601,55 @@ availableTechnicians.forEach((technician) => {
   }
 });
 
+/**
+ * @swagger
+ * /appointments:
+ *   post:
+ *     summary: Create an appointment between client and technician
+ *     tags: [Appointments]
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             type: object
+ *             properties:
+ *               clientId:
+ *                 type: string
+ *                 format: uuid
+ *               technicianId:
+ *                 type: string
+ *                 format: uuid
+ *               serviceType:
+ *                 type: string
+ *               appointmentDate:
+ *                 type: string
+ *                 format: date-time
+ *     responses:
+ *       201:
+ *         description: Appointment created successfully
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 message:
+ *                   type: string
+ *                 appointment:
+ *                   type: object
+ *                 rate:
+ *                   type: object
+ *                   properties:
+ *                     min:
+ *                       type: number
+ *                     max:
+ *                       type: number
+ *       404:
+ *         description: Rate card not found for the service
+ *       500:
+ *         description: Error creating appointment
+ */
+
 router.post('/appointments', async (req, res) => {
   const { clientId, technicianId, serviceType, appointmentDate } = req.body;
 
@@ -397,10 +683,55 @@ router.post('/appointments', async (req, res) => {
   }
 });
 
+/**
+ * @swagger
+ * /payments/initiate:
+ *   post:
+ *     summary: Initiate a payment
+ *     tags: [Payments]
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             type: object
+ *             properties:
+ *               amount:
+ *                 type: number
+ *               phoneNumber:
+ *                 type: string
+ *     responses:
+ *       200:
+ *         description: Payment initiated successfully
+ *       500:
+ *         description: Failed to initiate payment
+ */
 
 // Initiate payment
 router.post('/payments/initiate', makePayment);
 
+
+/**
+ * @swagger
+ * /payments/callback:
+ *   post:
+ *     summary: Handle Daraja payment callback
+ *     tags: [Payments]
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             type: object
+ *             properties:
+ *               callbackData:
+ *                 type: object
+ *     responses:
+ *       200:
+ *         description: Payment callback handled successfully
+ *       500:
+ *         description: Failed to handle payment callback
+ */
 // Handle Daraja callback
 router.post('/payments/callback', handlePaymentCallback);
 
