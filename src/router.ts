@@ -2,7 +2,7 @@ import { Router } from 'express';
 import { PrismaClient } from '@prisma/client';
 import { body } from 'express-validator';
 import { handleInputErrors } from './modules/middleware';
-import { createTechnician, deleteTechnician, getTechnician, getTechnicians, updateTechnician } from './controllers/technicianController';
+import { createTechnician, deleteTechnician, getTechnician, getTechnicians, updateTechnician, verifyTechnicianEmail } from './controllers/technicianController';
 import { createService, deleteService, getService, getServices, updateService } from './controllers/serviceController';
 import { createCategory, getCategories } from './controllers/categoryController';
 import { createRating, getRatingsByTechnician } from './controllers/ratingController';
@@ -92,6 +92,31 @@ router.post('/technicians',
   upload.single('document'),
   createTechnician
 );
+
+/**
+ * @swagger
+ * /verify-technician-email:
+ *  get:
+ *   summary: Verify technician email
+ *  tags: [Technicians]
+ * parameters:
+ * - in: query
+ *  name: token
+ * schema:
+ * type: string
+ * required: true
+ * description: Verification token
+ * responses:
+ * 200:
+ * description: Email verified
+ * 400:
+ * description: Invalid token
+ * 500:
+ * description: Error verifying email
+ * 
+ */
+
+router.get('/verify-technician-email', verifyTechnicianEmail);
 
 
 /**

@@ -1,103 +1,203 @@
-import { PrismaClient } from '@prisma/client';
-import { hashPassword } from '../modules/auth';  // Assuming hashPassword is already implemented
+import { Prisma, PrismaClient } from '@prisma/client';
+import { hashPassword, comparePassword, createJWT } from '../modules/auth';  // Assuming these are implemented
+import nodemailer from 'nodemailer';
+import crypto from 'crypto';
 
 const prisma = new PrismaClient();
 
+// Setup nodemailer transporter (configure your email service provider)
+const transporter = nodemailer.createTransport({
+  service: 'Gmail',  // You can replace Gmail with another email service
+  auth: {
+    user: process.env.EMAIL_USERNAME,  // Your email
+    pass: process.env.EMAIL_PASSWORD,  // Your email password
+  },
+});
+
+// Function to send verification email
+const sendVerificationEmail = async (user, verificationToken) => {
+  const verificationLink = `http://localhost:3000/api/verify-email?token=${verificationToken}`;
+
+  const mailOptions = {
+    from: process.env.EMAIL_USERNAME,
+    to: user.email,
+    subject: 'Verify Your Email',
+    html: `<p>Please verify your email by clicking the following link: <a href="${verificationLink}">Verify Email</a></p>`,
+  };
+
+  return transporter.sendMail(mailOptions);
+};
+
 export const getTechnicians = async (req, res) => {
-    try {
-        const technicians = await prisma.technician.findMany({
-            include: { category: true, services: true, ratings: true, location: true },
-        });
-        res.json(technicians);
-    } catch (error) {
-        res.status(500).json({ message: 'Error fetching technicians', error });
-    }
+  try {
+    const technicians = await prisma.technician.findMany({
+      include: { category: true, services: true, ratings: true, location: true },
+    });
+    res.json(technicians);
+  } catch (error) {
+    res.status(500).json({ message: 'Error fetching technicians', error });
+  }
 };
 
 export const createTechnician = async (req, res) => {
-    const { username, password, categoryId } = req.body;
-    const file = req.file;  // Document uploaded via multer
+  const { username, password, email, categoryId } = req.body;
+  const file = req.file;  // Document uploaded via multer
 
-    if (!file) {
-        return res.status(400).json({ message: 'Document upload is required' });
+  if (!file) {
+    return res.status(400).json({ message: 'Document upload is required' });
+  }
+
+  try {
+    // Check if username or email is already taken
+    const existingUser = await prisma.technician.findUnique({ where: { username } });
+    const existingEmail = await prisma.technician.findUnique({ where: { email } });
+    if (existingUser) {
+      return res.status(400).json({ message: 'Username already taken' });
+    }
+    if (existingEmail) {
+      return res.status(400).json({ message: 'Email already taken' });
     }
 
-    try {
-        const hashedPassword = await hashPassword(password);
+    const hashedPassword = await hashPassword(password);
 
-        const technician = await prisma.technician.create({
-            data: {
-                username,
-                password: hashedPassword,
-                categoryId: parseInt(categoryId),
-                documents: file.path,  // Save the document's file path
-                verificationStatus: 'PENDING',  // Set verification status to pending
-            },
-        });
+    // Generate a verification token
+    const verificationToken = crypto.randomBytes(32).toString('hex');
 
-        res.status(201).json({ message: 'Technician registered successfully', technician });
-    } catch (error) {
-        res.status(500).json({ message: 'Error registering technician', error });
+    const technician = await prisma.technician.create({
+      data: {
+        username,
+        email,
+        password: hashedPassword,
+        categoryId: parseInt(categoryId),
+        documents: file.path,  // Save the document's file path
+        verificationStatus: 'PENDING',  // Set verification status to pending
+        verificationToken,  // Save the verification token
+      },
+    });
+
+    // Send a verification email to the technician
+    await sendVerificationEmail(technician, verificationToken);
+
+    res.status(201).json({ message: 'Technician registered successfully. Please verify your email', technician });
+  } catch (error) {
+    console.error('Error registering technician:', error);
+    res.status(500).json({ message: 'Error registering technician', error: error.message });
+  }
+};
+
+export const verifyTechnicianEmail = async (req, res) => {
+  const { token } = req.query;
+
+  try {
+    // Find technician by verification token
+    const technician = await prisma.technician.updateMany({
+      where: {
+        verificationToken: token,
+        verificationStatus: 'PENDING',
+      },
+      data: {
+        verificationStatus: 'VERIFIED',
+        verificationToken: null,  // Clear the token after verification
+      },
+    });
+
+    if (technician.count === 0) {
+      return res.status(400).json({ message: 'Invalid or expired token' });
     }
+
+    res.status(200).json({ message: 'Email verified successfully. You can now log in.' });
+  } catch (error) {
+    console.error('Error verifying email:', error);
+    res.status(500).json({ message: 'Error verifying email' });
+  }
+};
+
+export const loginTechnician = async (req, res) => {
+  const { username, password } = req.body;
+
+  try {
+    const technician = await prisma.technician.findUnique({ where: { username } });
+
+    if (!technician) return res.status(404).json({ message: 'Technician not found' });
+
+    if (technician.verificationStatus !== 'VERIFIED') {
+      return res.status(403).json({ message: 'Please verify your email to log in' });
+    }
+
+    const valid = await comparePassword(password, technician.password);
+    if (!valid) return res.status(401).json({ message: 'Invalid password' });
+
+    const token = createJWT(technician);
+    res.status(200).json({ token });
+  } catch (error) {
+    console.error('Error logging in technician:', error);
+    res.status(500).json({ message: 'Error logging in technician' });
+  }
 };
 
 export const getTechnician = async (req, res) => {
-    const { id } = req.params;
-    try {
-        const technician = await prisma.technician.findUnique({
-            where: { id },
-            include: { category: true, services: true, ratings: true, location: true },
-        });
+  const { id } = req.params;
+  try {
+    const technician = await prisma.technician.findUnique({
+      where: { id },
+      include: { category: true, services: true, ratings: true, location: true },
+    });
 
-        if (!technician) {
-            return res.status(404).json({ message: 'Technician not found' });
-        }
-
-        res.json(technician);
-    } catch (error) {
-        res.status(500).json({ message: 'Error fetching technician', error });
+    if (!technician) {
+      return res.status(404).json({ message: 'Technician not found' });
     }
+
+    res.json(technician);
+  } catch (error) {
+    res.status(500).json({ message: 'Error fetching technician', error });
+  }
 };
 
 export const updateTechnician = async (req, res) => {
     const { id } = req.params;
     const { username, password, categoryId } = req.body;
-    const file = req.file;  // Handle new document upload if provided
-
+    const file = req.file; // Handle new document upload if provided
+  
     try {
-        const data: any = {
-            username,
-            categoryId: parseInt(categoryId),
-        };
-
-        if (password) {
-            data.password = await hashPassword(password);
-        }
-
-        if (file) {
-            data.documents = file.path;  // Update the document file path
-            data.verificationStatus = 'PENDING';  // Reset verification status when document is updated
-        }
-
-        const updatedTechnician = await prisma.technician.update({
-            where: { id },
-            data,
-        });
-
-        res.json(updatedTechnician);
+      // Build the data object using Prisma's TechnicianUpdateInput
+      const data: Prisma.TechnicianUncheckedUpdateInput = {
+        username,
+        categoryId: categoryId ? parseInt(categoryId) : undefined,
+      };
+  
+      // If password is provided, hash it and add it to the data object
+      if (password) {
+        data.password = await hashPassword(password);
+      }
+  
+      // If a file (document) is provided, update the documents and reset verification status
+      if (file) {
+        data.documents = file.path; // Update the document file path
+        data.verificationStatus = 'PENDING'; // Reset verification status when document is updated
+      }
+  
+      // Update the technician in the database
+      const updatedTechnician = await prisma.technician.update({
+        where: { id },
+        data,
+      });
+  
+      res.json(updatedTechnician);
     } catch (error) {
-        res.status(500).json({ message: 'Error updating technician', error });
+      console.error('Error updating technician:', error);
+      res.status(500).json({ message: 'Error updating technician', error });
     }
-};
+  };
+  
 
 export const deleteTechnician = async (req, res) => {
-    const { id } = req.params;
-    try {
-        await prisma.technician.delete({
-            where: { id },
-        });
-        res.json({ message: 'Technician deleted' });
-    } catch (error) {
-        res.status(500).json({ message: 'Error deleting technician', error });
-    }
+  const { id } = req.params;
+  try {
+    await prisma.technician.delete({
+      where: { id },
+    });
+    res.json({ message: 'Technician deleted' });
+  } catch (error) {
+    res.status(500).json({ message: 'Error deleting technician', error });
+  }
 };

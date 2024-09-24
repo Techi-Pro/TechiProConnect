@@ -3,7 +3,7 @@ import router from './router';  // All protected routes
 import morgan from 'morgan';
 import cors from 'cors';
 import { protect } from './modules/auth';  // Protect middleware for API routes
-import { createUser, loginUser } from './controllers/userController';
+import { createUser, loginUser, verifyEmail } from './controllers/userController';
 import http from 'http';
 import { Server } from 'socket.io';
 import { PrismaClient } from '@prisma/client';
@@ -34,6 +34,7 @@ app.get('/', (req, res) => {
 
 // Public routes (no authentication required)
 app.post('/users', createUser);  // User registration
+app.get('/verify-email',verifyEmail)
 app.post('/login', loginUser);   // User login
 
 // Protected routes (require authentication)
@@ -54,18 +55,21 @@ io.use((socket, next) => {
 
     if (!token) {
         console.log('No token provided');
+        socket.emit('error', { message: 'Authentication error: No token provided' });
         return next(new Error('Authentication error: No token provided'));
     }
 
     try {
-        const user = jwt.verify(token, process.env.JWT_SECRET);  // Verify JWT token
-        socket.user = user;  // Attach the user to the socket instance
-        next();  // Proceed to next middleware/event handler
+        const user = jwt.verify(token, process.env.JWT_SECRET);
+        socket.user = user;
+        next();
     } catch (error) {
         console.error('Invalid token:', error);
+        socket.emit('error', { message: 'Authentication error: Invalid token' });
         return next(new Error('Authentication error: Invalid token'));
     }
 });
+
 
 // WebSocket event for real-time tracking and messaging
 io.on('connection', (socket) => {
@@ -75,11 +79,11 @@ io.on('connection', (socket) => {
     socket.on('location-update', async (data: { technicianId: string; latitude: number; longitude: number; address: string }) => {
         if (!socket.user || socket.user.role !== 'TECHNICIAN') {
             console.log('Unauthorized user tried to send location');
+            socket.emit('error', { message: 'Unauthorized access to location update' });
             return;
         }
-
+    
         try {
-            // Upsert technician location into the database
             await prisma.location.upsert({
                 where: { technicianId: data.technicianId },
                 update: {
@@ -94,25 +98,28 @@ io.on('connection', (socket) => {
                     address: data.address,
                 },
             });
-
-            // Broadcast location to all clients (including the one who sent it)
             io.emit('location-update', data);
         } catch (error) {
             console.error('Error updating location:', error);
+            socket.emit('error', { message: 'Error updating location' });
         }
     });
+    
 
     // Real-time messaging between clients and technicians
     socket.on('message', (data: { appointmentId: number; message: string }) => {
-        console.log(`Message received for appointment ${data.appointmentId}:`, data.message);
-
-        // Broadcast the message to all clients related to the specific appointment
-        socket.broadcast.emit(`message-${data.appointmentId}`, {
-            sender: socket.user.username,
-            message: data.message,
-        });
-    });
-
+        try {
+            console.log(`Message received for appointment ${data.appointmentId}:`, data.message);
+    
+            // Broadcast the message to all clients related to the specific appointment
+            socket.broadcast.emit(`message-${data.appointmentId}`, {
+                sender: socket.user.username,
+                message: data.message,
+            });
+        } catch (error) {
+            console.error('Error handling message:', error);
+        }
+    }); 
     socket.on('disconnect', () => {
         console.log('Client disconnected:', socket.id);
     });
