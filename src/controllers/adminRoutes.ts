@@ -31,7 +31,7 @@ router.post('/admin/technicians/:id/approve', async (req, res) => {
   try {
     const technician = await prisma.technician.update({
       where: { id },
-      data: { verificationStatus: 'APPROVED' },
+      data: { verificationStatus: 'VERIFIED' },
     });
 
     res.status(200).json({ message: 'Technician document approved', technician });
