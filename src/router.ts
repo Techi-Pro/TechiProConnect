@@ -96,25 +96,49 @@ router.post('/technicians',
 /**
  * @swagger
  * /verify-technician-email:
- *  get:
- *   summary: Verify technician email
- *  tags: [Technicians]
- * parameters:
- * - in: query
- *  name: token
- * schema:
- * type: string
- * required: true
- * description: Verification token
- * responses:
- * 200:
- * description: Email verified
- * 400:
- * description: Invalid token
- * 500:
- * description: Error verifying email
- * 
+ *   get:
+ *     summary: Verify technician email
+ *     tags: [Technicians]
+ *     parameters:
+ *       - in: query
+ *         name: token
+ *         schema:
+ *           type: string
+ *         required: true
+ *         description: Verification token
+ *     responses:
+ *       200:
+ *         description: Email verified successfully
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 message:
+ *                   type: string
+ *                   example: "Email verified successfully. You can now log in."
+ *       400:
+ *         description: Invalid or expired token
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 message:
+ *                   type: string
+ *                   example: "Invalid or expired token."
+ *       500:
+ *         description: Error verifying email
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 message:
+ *                   type: string
+ *                   example: "Error verifying email."
  */
+
 
 router.get('/verify-technician-email', verifyTechnicianEmail);
 

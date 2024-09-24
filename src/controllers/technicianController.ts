@@ -1,4 +1,4 @@
-import { Prisma, PrismaClient } from '@prisma/client';
+import { Prisma, PrismaClient, VerificationStatus } from '@prisma/client';
 import { hashPassword, comparePassword, createJWT } from '../modules/auth';  // Assuming these are implemented
 import nodemailer from 'nodemailer';
 import crypto from 'crypto';
@@ -93,10 +93,10 @@ export const verifyTechnicianEmail = async (req, res) => {
     const technician = await prisma.technician.updateMany({
       where: {
         verificationToken: token,
-        verificationStatus: 'PENDING',
+        verificationStatus: VerificationStatus.PENDING,
       },
       data: {
-        verificationStatus: 'VERIFIED',
+        verificationStatus: VerificationStatus.VERIFIED,
         verificationToken: null,  // Clear the token after verification
       },
     });
@@ -173,7 +173,7 @@ export const updateTechnician = async (req, res) => {
       // If a file (document) is provided, update the documents and reset verification status
       if (file) {
         data.documents = file.path; // Update the document file path
-        data.verificationStatus = 'PENDING'; // Reset verification status when document is updated
+        data.verificationStatus = VerificationStatus.PENDING // Reset verification status when document is updated
       }
   
       // Update the technician in the database
