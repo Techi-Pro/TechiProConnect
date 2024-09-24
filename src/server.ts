@@ -3,7 +3,7 @@ import router from './router';  // All protected routes
 import morgan from 'morgan';
 import cors from 'cors';
 import { protect } from './modules/auth';  // Protect middleware for API routes
-import { createUser, loginUser } from './controllers/userController';
+import { createUser, loginUser , verifyEmail} from './controllers/userController';
 import http from 'http';
 import { Server } from 'socket.io';
 import { PrismaClient } from '@prisma/client';
@@ -34,6 +34,7 @@ app.get('/', (req, res) => {
 
 // Public routes (no authentication required)
 app.post('/users', createUser);  // User registration
+app.use('/verify-email', verifyEmail); // Email verification
 app.post('/login', loginUser);   // User login
 
 // Protected routes (require authentication)
