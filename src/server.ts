@@ -40,6 +40,8 @@ app.post('/login', loginUser);   // User login
 // Protected routes (require authentication)
 app.use('/api', protect, router);  // All other routes under /api are protected
 
+
+
 app.use('/api', nearestTechnicianRouter);
 
 // Use appointment routes for scheduling
