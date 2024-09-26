@@ -31,7 +31,9 @@ model Technician {
 model User {
   id             String           @id @default(uuid())
   username       String           @unique // Changed from name to username
-  password       String // Added password field
+  password       String 
+  resetPasswordToken String?   
+  resetPasswordExpires DateTime? 
   email          String           @unique
   isVerified      Boolean  @default(false)
   verificationToken String?
