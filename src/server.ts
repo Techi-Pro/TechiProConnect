@@ -34,7 +34,7 @@ app.get('/', (req, res) => {
 
 // Public routes (no authentication required)
 app.post('/users', createUser);  // User registration
-app.use('/verify-email', verifyEmail); // Email verification
+app.get('/verify-email', verifyEmail); // Email verification
 app.post('/login', loginUser);   // User login
 
 // Protected routes (require authentication)
