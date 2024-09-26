@@ -11,6 +11,7 @@ import jwt from 'jsonwebtoken';
 import appointmentRouter from './controllers/appointmentRoutes'
 import nearestTechnicianRouter from './controllers/nearestTechnician'
 import { errorHandler } from './middleware/errorHandler'; 
+import { forgotPassword, resetPassword } from './controllers/forgotPasswordController';
 
 
 
@@ -36,6 +37,13 @@ app.get('/', (req, res) => {
 app.post('/users', createUser);  // User registration
 app.get('/verify-email', verifyEmail); // Email verification
 app.post('/login', loginUser);   // User login
+
+// Forgot Password Route
+app.get('/forgot-password', forgotPassword);
+
+// Reset Password Route
+app.post('/reset-password', resetPassword);
+
 
 // Protected routes (require authentication)
 app.use('/api', protect, router);  // All other routes under /api are protected

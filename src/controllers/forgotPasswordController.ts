@@ -41,7 +41,7 @@ export const forgotPassword = async (req, res) => {
 
         // Create a reset link
         const baseURL = process.env.BASE_URL || 'http://localhost:3000';
-        const resetLink = `${baseURL}api/reset-password?token=${resetToken}`;
+        const resetLink = `${baseURL}reset-password?token=${resetToken}`;
 
         // Send reset password email
         const mailOptions = {

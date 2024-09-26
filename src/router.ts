@@ -10,16 +10,9 @@ import { upsertLocation } from './controllers/locationController';
 import haversine from 'haversine';
 import { upload } from './middleware/upload';
 import { makePayment, handlePaymentCallback } from './controllers/paymentController';
-import { forgotPassword, resetPassword } from './controllers/forgotPasswordController';
 
 const router = Router();
 const prisma = new PrismaClient();
-
-// Forgot Password Route
-router.get('/forgot-password', forgotPassword);
-
-// Reset Password Route
-router.post('/reset-password', resetPassword);
 
 
 /**
