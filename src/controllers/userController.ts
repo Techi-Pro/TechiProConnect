@@ -24,7 +24,25 @@ const sendVerificationEmail = async (user, verificationToken) => {
       from: process.env.EMAIL_USERNAME,
       to: user.email,
       subject: 'Verify Your Email',
-      html: `<p>Please verify your email by clicking the following link: <a href="${verificationLink}">Verify Email</a></p>`
+      html: `
+  <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto; padding: 20px; border: 1px solid #e0e0e0; border-radius: 10px;">
+    <h2 style="color: #333; text-align: center;">Welcome to TechEasyServe!</h2>
+    <p style="font-size: 16px; color: #555;">
+      Hi ${user.username},<br><br>
+      Thank you for registering with us! Please verify your email address to complete your registration and start accessing our platform.
+    </p>
+    <div style="text-align: center; margin: 30px 0;">
+      <a href="${verificationLink}" style="background-color: #4CAF50; color: white; padding: 12px 25px; text-decoration: none; border-radius: 5px; font-size: 16px;">Verify Email</a>
+    </div>
+    <p style="font-size: 14px; color: #777;">
+      If you did not sign up for this account, please ignore this email.
+    </p>
+    <hr style="border: 0; border-top: 1px solid #e0e0e0;"/>
+    <p style="font-size: 12px; color: #999; text-align: center;">
+      © ${new Date().getFullYear()} TechEasyServe. All rights reserved.
+    </p>
+  </div>
+`
     };
   
     return transporter.sendMail(mailOptions);
