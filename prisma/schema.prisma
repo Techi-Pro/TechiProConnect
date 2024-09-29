@@ -1,10 +1,12 @@
 generator client {
   provider = "prisma-client-js"
+  previewFeatures = ["postgresqlExtensions"] // Enable the postgresqlExtensions preview feature
 }
 
 datasource db {
   provider = "postgresql"
   url      = env("DATABASE_URL")
+  extensions = [postgis]  // Enable PostGIS
 }
 
 model Technician {
@@ -22,6 +24,7 @@ model Technician {
   location           Location?
   documents          String? // URL or file path of the uploaded document
   verificationStatus VerificationStatus @default(PENDING) // Document verification status
+  availabilityStatus AvailabilityStatus @default(AVAILABLE)  // New field for tracking availability
   createdAt          DateTime           @default(now())
   updatedAt          DateTime           @updatedAt
   ServiceRequest     ServiceRequest[]
@@ -76,6 +79,7 @@ model Location {
   id           Int        @id @default(autoincrement())
   latitude     Float
   longitude    Float
+  coordinates  Unsupported("geometry(Point, 4326)") // Use PostGIS Point type
   address      String
   technicianId String     @unique // Unique for one-to-one relationship
   technician   Technician @relation(fields: [technicianId], references: [id])
@@ -148,6 +152,13 @@ enum RequestStatus {
   ACCEPTED
   COMPLETED
   CANCELLED
+}
+
+
+enum AvailabilityStatus {
+  AVAILABLE   // Ready for a new job
+  BUSY        // Currently on a job
+  OFFLINE     // Not working
 }
 
 enum Role {

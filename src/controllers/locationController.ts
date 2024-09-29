@@ -7,7 +7,7 @@ export const upsertLocation = async (req, res) => {
     const { latitude, longitude, address } = req.body;
 
     try {
-        // Validate latitude and longitude
+        // Validate latitude, longitude, and address
         if (!latitude || !longitude || !address) {
             return res.status(400).json({ message: 'Latitude, longitude, and address are required' });
         }
@@ -21,14 +21,15 @@ export const upsertLocation = async (req, res) => {
             return res.status(404).json({ message: 'Technician not found' });
         }
 
-        // Upsert location (update if exists, otherwise create)
-        const location = await prisma.location.upsert({
-            where: { technicianId: id },
-            update: { latitude, longitude, address },
-            create: { technicianId: id, latitude, longitude, address },
-        });
+        // Upsert location with PostGIS support using raw SQL
+        await prisma.$executeRaw`
+          INSERT INTO "Location" ("technicianId", "latitude", "longitude", "address", "coordinates")
+          VALUES (${id}, ${latitude}, ${longitude}, ${address}, ST_SetSRID(ST_MakePoint(${longitude}, ${latitude}), 4326))
+          ON CONFLICT ("technicianId")
+          DO UPDATE SET "latitude" = ${latitude}, "longitude" = ${longitude}, "address" = ${address}, "coordinates" = ST_SetSRID(ST_MakePoint(${longitude}, ${latitude}), 4326);
+        `;
 
-        res.status(200).json(location);
+        res.status(200).json({ message: 'Location upserted successfully' });
     } catch (error) {
         console.error('Error upserting location:', error);
         res.status(500).json({ message: 'Error upserting location' });

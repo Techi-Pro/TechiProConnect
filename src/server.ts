@@ -85,29 +85,23 @@ io.use((socket, next) => {
 io.on('connection', (socket) => {
     console.log('Client connected:', socket.id);
 
-    // Location update event from the technician
-    socket.on('location-update', async (data: { technicianId: string; latitude: number; longitude: number; address: string }) => {
+     // Location update event from the technician
+     socket.on('location-update', async (data: { technicianId: string; latitude: number; longitude: number; address: string }) => {
         if (!socket.user || socket.user.role !== 'TECHNICIAN') {
             console.log('Unauthorized user tried to send location');
             socket.emit('error', { message: 'Unauthorized access to location update' });
             return;
         }
-    
+
         try {
-            await prisma.location.upsert({
-                where: { technicianId: data.technicianId },
-                update: {
-                    latitude: data.latitude,
-                    longitude: data.longitude,
-                    address: data.address,
-                },
-                create: {
-                    technicianId: data.technicianId,
-                    latitude: data.latitude,
-                    longitude: data.longitude,
-                    address: data.address,
-                },
-            });
+            // Upsert location with PostGIS support using raw SQL
+            await prisma.$executeRaw`
+                INSERT INTO "Location" ("technicianId", "latitude", "longitude", "address", "coordinates")
+                VALUES (${data.technicianId}, ${data.latitude}, ${data.longitude}, ${data.address}, ST_SetSRID(ST_MakePoint(${data.longitude}, ${data.latitude}), 4326))
+                ON CONFLICT ("technicianId")
+                DO UPDATE SET "latitude" = ${data.latitude}, "longitude" = ${data.longitude}, "address" = ${data.address}, "coordinates" = ST_SetSRID(ST_MakePoint(${data.longitude}, ${data.latitude}), 4326);
+            `;
+
             io.emit('location-update', data);
         } catch (error) {
             console.error('Error updating location:', error);

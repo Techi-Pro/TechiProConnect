@@ -1,5 +1,5 @@
 import { Prisma, PrismaClient, VerificationStatus } from '@prisma/client';
-import { hashPassword, comparePassword, createJWT } from '../modules/auth';  // Assuming these are implemented
+import { hashPassword, comparePassword, createJWT } from '../modules/auth';
 import nodemailer from 'nodemailer';
 import crypto from 'crypto';
 
@@ -23,7 +23,12 @@ const sendVerificationEmail = async (user, verificationToken) => {
     from: process.env.EMAIL_USERNAME,
     to: user.email,
     subject: 'Verify Your Email',
-    html: `<p>Please verify your email by clicking the following link: <a href="${verificationLink}">Verify Email</a></p>`,
+    html: `
+      <div style="font-family: Arial, sans-serif;">
+        <h2>Welcome to TechEasyServe!</h2>
+        <p>Please verify your email by clicking the following link:</p>
+        <a href="${verificationLink}" style="background-color: #4CAF50; color: white; padding: 12px 25px; text-decoration: none; border-radius: 5px; font-size: 16px;">Verify Email</a>
+      </div>`,
   };
 
   return transporter.sendMail(mailOptions);
@@ -71,7 +76,7 @@ export const createTechnician = async (req, res) => {
         password: hashedPassword,
         categoryId: parseInt(categoryId),
         documents: file.path,  // Save the document's file path
-        verificationStatus: 'PENDING',  // Set verification status to pending
+        verificationStatus: VerificationStatus.PENDING,  // Set verification status to pending
         verificationToken,  // Save the verification token
       },
     });
@@ -121,7 +126,7 @@ export const loginTechnician = async (req, res) => {
 
     if (!technician) return res.status(404).json({ message: 'Technician not found' });
 
-    if (technician.verificationStatus !== 'VERIFIED') {
+    if (technician.verificationStatus !== VerificationStatus.VERIFIED) {
       return res.status(403).json({ message: 'Please verify your email to log in' });
     }
 
@@ -155,41 +160,40 @@ export const getTechnician = async (req, res) => {
 };
 
 export const updateTechnician = async (req, res) => {
-    const { id } = req.params;
-    const { username, password, categoryId } = req.body;
-    const file = req.file; // Handle new document upload if provided
-  
-    try {
-      // Build the data object using Prisma's TechnicianUpdateInput
-      const data: Prisma.TechnicianUncheckedUpdateInput = {
-        username,
-        categoryId: categoryId ? parseInt(categoryId) : undefined,
-      };
-  
-      // If password is provided, hash it and add it to the data object
-      if (password) {
-        data.password = await hashPassword(password);
-      }
-  
-      // If a file (document) is provided, update the documents and reset verification status
-      if (file) {
-        data.documents = file.path; // Update the document file path
-        data.verificationStatus = VerificationStatus.PENDING // Reset verification status when document is updated
-      }
-  
-      // Update the technician in the database
-      const updatedTechnician = await prisma.technician.update({
-        where: { id },
-        data,
-      });
-  
-      res.json(updatedTechnician);
-    } catch (error) {
-      console.error('Error updating technician:', error);
-      res.status(500).json({ message: 'Error updating technician', error });
+  const { id } = req.params;
+  const { username, password, categoryId } = req.body;
+  const file = req.file; // Handle new document upload if provided
+
+  try {
+    // Build the data object using Prisma's TechnicianUpdateInput
+    const data: Prisma.TechnicianUncheckedUpdateInput = {
+      username,
+      categoryId: categoryId ? parseInt(categoryId) : undefined,
+    };
+
+    // If password is provided, hash it and add it to the data object
+    if (password) {
+      data.password = await hashPassword(password);
     }
-  };
-  
+
+    // If a file (document) is provided, update the documents and reset verification status
+    if (file) {
+      data.documents = file.path; // Update the document file path
+      data.verificationStatus = VerificationStatus.PENDING; // Reset verification status when document is updated
+    }
+
+    // Update the technician in the database
+    const updatedTechnician = await prisma.technician.update({
+      where: { id },
+      data,
+    });
+
+    res.json(updatedTechnician);
+  } catch (error) {
+    console.error('Error updating technician:', error);
+    res.status(500).json({ message: 'Error updating technician', error });
+  }
+};
 
 export const deleteTechnician = async (req, res) => {
   const { id } = req.params;

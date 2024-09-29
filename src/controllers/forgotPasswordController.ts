@@ -18,7 +18,6 @@ const transporter = nodemailer.createTransport({
 // Forgot password function
 export const forgotPassword = async (req, res) => {
     const { email } = req.body;
-
     try {
         // Check if user exists with this email
         const user = await prisma.user.findUnique({ where: { email } });

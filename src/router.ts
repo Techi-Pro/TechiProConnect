@@ -554,7 +554,7 @@ router.post('/service-requests', async (req, res) => {
         serviceType,
         latitude,
         longitude,
-        status: 'PENDING',  // By default, request starts as pending
+        status: 'PENDING',
       },
     });
 
@@ -564,7 +564,6 @@ router.post('/service-requests', async (req, res) => {
     res.status(500).json({ message: 'Failed to create service request' });
   }
 });
-
 
 /**
  * @swagger
@@ -598,50 +597,49 @@ router.post('/service-requests/:id/match', async (req, res) => {
       return res.status(404).json({ message: 'Service request not found' });
     }
 
-// Find all technicians that match the service type (you can adjust this based on your requirements)
-const availableTechnicians = await prisma.technician.findMany({
-  where: {
-    services: { some: { name: serviceRequest.serviceType } }, // Assuming Technician offers services
-  },
-  include: {
-    location: true, // Include the location relation
-  },
-});
+    // Get available technicians for the requested service
+    const availableTechnicians = await prisma.technician.findMany({
+      where: {
+        services: { some: { name: serviceRequest.serviceType } },
+        availabilityStatus: 'AVAILABLE',
+      },
+      include: { location: true },
+    });
 
-// Match with the closest technician using Haversine formula
-let closestTechnician = null;
-let minDistance = Infinity;
+    // Find the closest technician using haversine formula
+    let closestTechnician = null;
+    let minDistance = Infinity;
 
-availableTechnicians.forEach((technician) => {
-  if (technician.location) {
-    const technicianLocation = {
-      latitude: technician.location.latitude,
-      longitude: technician.location.longitude,
-    };
+    availableTechnicians.forEach((technician) => {
+      if (technician.location) {
+        const technicianLocation = {
+          latitude: technician.location.latitude,
+          longitude: technician.location.longitude,
+        };
 
-    const clientLocation = {
-      latitude: serviceRequest.latitude,
-      longitude: serviceRequest.longitude,
-    };
+        const clientLocation = {
+          latitude: serviceRequest.latitude,
+          longitude: serviceRequest.longitude,
+        };
 
-    const distance = haversine(clientLocation, technicianLocation);
-    if (distance < minDistance) {
-      minDistance = distance;
-      closestTechnician = technician;
-    }
-  }
-});
+        const distance = haversine(clientLocation, technicianLocation);
+        if (distance < minDistance) {
+          minDistance = distance;
+          closestTechnician = technician;
+        }
+      }
+    });
 
-  if (!closestTechnician) {
+    if (!closestTechnician) {
       return res.status(404).json({ message: 'No technicians available for this service' });
     }
 
-    // Assign the closest technician to the service request
-  const updatedRequest = await prisma.serviceRequest.update({
+    // Assign the closest technician
+    const updatedRequest = await prisma.serviceRequest.update({
       where: { id: parseInt(id) },
       data: {
         technicianId: closestTechnician.id,
-        status: 'ACCEPTED', // Update status to accepted
+        status: 'ACCEPTED',
       },
     });
 
@@ -651,6 +649,7 @@ availableTechnicians.forEach((technician) => {
     res.status(500).json({ message: 'Failed to match technician' });
   }
 });
+
 
 /**
  * @swagger
@@ -701,14 +700,15 @@ availableTechnicians.forEach((technician) => {
  *         description: Error creating appointment
  */
 
+
+/**
+ * Appointments
+ */
 router.post('/appointments', async (req, res) => {
   const { clientId, technicianId, serviceType, appointmentDate } = req.body;
 
   try {
-    // Fetch rate card for the service type
-    const rateCard = await prisma.rateCard.findUnique({
-      where: { serviceType },
-    });
+    const rateCard = await prisma.rateCard.findUnique({ where: { serviceType } });
 
     if (!rateCard) {
       return res.status(404).json({ message: 'Rate card not found for this service' });
@@ -723,10 +723,10 @@ router.post('/appointments', async (req, res) => {
       },
     });
 
-    res.status(201).json({ 
-      message: 'Appointment created successfully', 
+    res.status(201).json({
+      message: 'Appointment created successfully',
       appointment,
-      rate: { min: rateCard.minPrice, max: rateCard.maxPrice },  // Return rate for transparency
+      rate: { min: rateCard.minPrice, max: rateCard.maxPrice },
     });
   } catch (error) {
     console.error('Error creating appointment:', error);
