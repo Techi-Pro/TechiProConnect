@@ -19,7 +19,7 @@ export const sendVerificationEmail = async (user, verificationToken) => {
         return Promise.resolve();
     }
     const baseURL = config.secrets.baseUrl || 'http://localhost:3000';
-    const verificationLink = `${baseURL}verify-email?token=${verificationToken}`;
+    const verificationLink = `${baseURL}/api/v1/verify-email?token=${verificationToken}`; // Fixed to include /api/v1
     const mailOptions = {
         from: config.secrets.emailUser,
         to: user.email,
@@ -52,7 +52,7 @@ export const verifyEmail = async (token) => {
         where: { verificationToken: token, isVerified: false },
         data: { isVerified: true, verificationToken: null },
     });
-    return user.count;
+    return user.count > 0; // Return true if updated, false if no user found
 };
 
 export const loginUser = async ({ username, password }) => {
@@ -66,16 +66,20 @@ export const loginUser = async ({ username, password }) => {
 };
 
 export const getUser = async (id) => {
-    return prisma.user.findUnique({ where: { id } });
+    const user = await prisma.user.findUnique({ where: { id } });
+    if (!user) throw new Error('User not found');
+    return user;
 };
 
 export const updateUser = async (id, data) => {
     if (data.password) {
         data.password = await hashPassword(data.password);
     }
-    return prisma.user.update({ where: { id }, data });
+    const user = await prisma.user.update({ where: { id }, data });
+    return user;
 };
 
 export const deleteUser = async (id) => {
-    return prisma.user.delete({ where: { id } });
-}; 
+    const user = await prisma.user.delete({ where: { id } });
+    return user;
+};
