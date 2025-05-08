@@ -8,7 +8,6 @@ const router = Router();
 
 router.post('/', createUserValidator, handleValidationErrors, userController.createUser);
 router.post('/login', userController.loginUser);
-router.get('/verify-email', userController.verifyEmail);
 router.get('/:id', requireRole('USER', 'ADMIN'), userController.getUser);
 router.put('/:id', requireRole('USER', 'ADMIN'), updateUserValidator, handleValidationErrors, userController.updateUser);
 router.delete('/:id', requireRole('ADMIN'), userController.deleteUser);

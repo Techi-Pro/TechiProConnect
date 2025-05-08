@@ -1,4 +1,5 @@
 import { Router } from 'express';
+import * as userController from '../controllers/user.controller';
 import userRoutes from './user.routes';
 import technicianRoutes from './technician.routes';
 import serviceRoutes from './service.routes';
@@ -14,6 +15,10 @@ import notificationRoutes from './notification.routes';
 
 const router = Router();
 
+// Public routes
+router.get('/verify-email', userController.verifyEmail); // Handle /api/v1/verify-email
+
+// Sub-routers
 router.use('/users', userRoutes);
 router.use('/technicians', technicianRoutes);
 router.use('/services', serviceRoutes);
