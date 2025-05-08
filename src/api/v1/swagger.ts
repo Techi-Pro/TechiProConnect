@@ -23,7 +23,7 @@ const options = {
         description: 'Development server',
       },
       {
-        url: 'https://techiproconnect.onrender.com',
+        url: 'https://techiproconnect.onrender.com/api/v1',
         description: 'Production server',
       },
     ],
