@@ -1,7 +1,6 @@
-import { Router } from 'express';
 import { PrismaClient } from '@prisma/client';
+import { Request, Response } from 'express';
 
-const router = Router();
 const prisma = new PrismaClient();
 
 // Define the expected result type for the raw query
@@ -13,11 +12,12 @@ interface NearestTechnician {
   distance: number;  // Add the distance field from the raw query
 }
 
-router.post('/technicians/nearest', async (req, res) => {
+export const nearestTechnicianHandler = async (req: Request, res: Response): Promise<void> => {
   const { latitude, longitude, serviceType } = req.body;
 
   if (!latitude || !longitude) {
-    return res.status(400).json({ message: 'Latitude and longitude are required.' });
+    res.status(400).json({ message: 'Latitude and longitude are required.' });
+    return;
   }
 
   try {
@@ -37,7 +37,8 @@ router.post('/technicians/nearest', async (req, res) => {
 
     // Ensure the technicians array has elements before accessing its properties
     if (!technicians || technicians.length === 0) {
-      return res.status(404).json({ message: 'No technicians found within the search radius.' });
+      res.status(404).json({ message: 'No technicians found within the search radius.' });
+      return;
     }
 
     const nearestTechnician = technicians[0];
@@ -46,10 +47,10 @@ router.post('/technicians/nearest', async (req, res) => {
       technician: nearestTechnician,
       distance: nearestTechnician.distance,  // Return distance for transparency
     });
+    return;
   } catch (error) {
     console.error('Error finding nearest technician:', error);
     res.status(500).json({ message: 'Failed to find the nearest technician' });
+    return;
   }
-});
-
-export default router;
+};

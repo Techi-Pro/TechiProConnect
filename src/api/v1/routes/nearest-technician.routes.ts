@@ -1,4 +1,9 @@
-import nearestTechnicianRouter from '../controllers/nearest-technician.controller';
+import { Router } from 'express';
+import { nearestTechnicianHandler } from '../controllers/nearest-technician.controller';
 // import validators and auth middleware as needed
 
-export default nearestTechnicianRouter; 
+const router = Router();
+
+router.post('/technicians/nearest', nearestTechnicianHandler);
+
+export default router; 

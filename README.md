@@ -99,5 +99,5 @@ Pull requests are welcome! For major changes, please open an issue first to disc
 ---
 
 ## 📬 Contact
-- Project Maintainer: [Your Name](mailto:movineeer@email.com)
+- Project Maintainer: [Movine Odhiambo](mailto:movineeer@email.com)
 - Issues: [GitHub Issues](https://github.com/Movineo/TechiProConnect/issues) 
