@@ -372,6 +372,33 @@ const options = {
             },
           },
         },
+        LoginResponse: {
+          type: 'object',
+          properties: {
+            token: {
+              type: 'string',
+              description: 'JWT token for authentication',
+            },
+          },
+        },
+        CreateUserResponse: {
+          type: 'object',
+          properties: {
+            message: {
+              type: 'string',
+              description: 'Success message indicating user creation and email verification requirement',
+            },
+          },
+        },
+        VerifyEmailResponse: {
+          type: 'object',
+          properties: {
+            message: {
+              type: 'string',
+              description: 'Success or error message for email verification',
+            },
+          },
+        },
       },
     },
     security: [
@@ -398,6 +425,7 @@ const options = {
         post: {
           summary: 'Create a new user',
           tags: ['Users'],
+          security: [], // Public endpoint
           requestBody: {
             required: true,
             content: {
@@ -405,21 +433,42 @@ const options = {
                 schema: {
                   type: 'object',
                   properties: {
-                    username: { type: 'string' },
-                    email: { type: 'string' },
-                    password: { type: 'string' },
+                    username: { type: 'string', description: 'Username of the user' },
+                    email: { type: 'string', format: 'email', description: 'Email address of the user' },
+                    password: { type: 'string', description: 'Password of the user' },
                   },
+                  required: ['username', 'email', 'password'],
                 },
               },
             },
           },
           responses: {
-            '201': { description: 'User created' },
+            '201': {
+              description: 'User created, verification email sent',
+              content: {
+                'application/json': {
+                  schema: { $ref: '#/components/schemas/CreateUserResponse' },
+                },
+              },
+            },
             '400': {
-              description: 'Validation error',
+              description: 'Validation error or username/email already taken',
               content: {
                 'application/json': {
                   schema: { $ref: '#/components/schemas/ValidationError' },
+                },
+              },
+            },
+            '500': {
+              description: 'Server error',
+              content: {
+                'application/json': {
+                  schema: {
+                    type: 'object',
+                    properties: {
+                      message: { type: 'string' },
+                    },
+                  },
                 },
               },
             },
@@ -739,6 +788,7 @@ const options = {
         post: {
           summary: 'Request password reset',
           tags: ['ForgotPassword'],
+          security: [], // Public endpoint
           requestBody: {
             required: true,
             content: {
@@ -769,6 +819,7 @@ const options = {
         post: {
           summary: 'Reset password',
           tags: ['ForgotPassword'],
+          security: [], // Public endpoint
           requestBody: {
             required: true,
             content: {
@@ -902,6 +953,112 @@ const options = {
           },
           responses: {
             '200': { description: 'Notification sent' },
+          },
+        },
+      },
+      '/login': {
+        post: {
+          summary: 'Log in a user and obtain a JWT token',
+          tags: ['Auth'],
+          security: [], // Public endpoint
+          requestBody: {
+            required: true,
+            content: {
+              'application/json': {
+                schema: {
+                  type: 'object',
+                  properties: {
+                    username: { type: 'string', description: 'Username of the user' },
+                    password: { type: 'string', description: 'Password of the user' },
+                  },
+                  required: ['username', 'password'],
+                },
+              },
+            },
+          },
+          responses: {
+            '200': {
+              description: 'Successful login, returns JWT token',
+              content: {
+                'application/json': {
+                  schema: { $ref: '#/components/schemas/LoginResponse' },
+                },
+              },
+            },
+            '401': {
+              description: 'Invalid credentials',
+              content: {
+                'application/json': {
+                  schema: { type: 'object', properties: { message: { type: 'string' } } },
+                },
+              },
+            },
+            '403': {
+              description: 'Email not verified',
+              content: {
+                'application/json': {
+                  schema: { type: 'object', properties: { message: { type: 'string' } } },
+                },
+              },
+            },
+            '404': {
+              description: 'User not found',
+              content: {
+                'application/json': {
+                  schema: { type: 'object', properties: { message: { type: 'string' } } },
+                },
+              },
+            },
+            '500': {
+              description: 'Server error',
+              content: {
+                'application/json': {
+                  schema: { type: 'object', properties: { message: { type: 'string' } } },
+                },
+              },
+            },
+          },
+        },
+      },
+      '/verify-email': {
+        get: {
+          summary: 'Verify a user’s email address',
+          tags: ['Auth'],
+          security: [], // Public endpoint
+          parameters: [
+            {
+              in: 'query',
+              name: 'token',
+              required: true,
+              schema: { type: 'string' },
+              description: 'Verification token sent to the user’s email',
+            },
+          ],
+          responses: {
+            '200': {
+              description: 'Email verified successfully',
+              content: {
+                'application/json': {
+                  schema: { $ref: '#/components/schemas/VerifyEmailResponse' },
+                },
+              },
+            },
+            '400': {
+              description: 'Invalid or expired token',
+              content: {
+                'application/json': {
+                  schema: { $ref: '#/components/schemas/VerifyEmailResponse' },
+                },
+              },
+            },
+            '500': {
+              description: 'Server error',
+              content: {
+                'application/json': {
+                  schema: { type: 'object', properties: { message: { type: 'string' } } },
+                },
+              },
+            },
           },
         },
       },
