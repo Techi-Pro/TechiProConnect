@@ -32,7 +32,12 @@ const limiter = rateLimit({
 app.use(limiter);
 
 app.get('/', (req, res) => {
-    res.status(200).json({ message: 'Hello World' });
+    res.status(200).json({
+        message: 'Welcome to TechiProConnect API! 🚀',
+        docs: '/api-docs',
+        status: 'OK',
+        version: '1.0.0'
+    });
 });
 
 // Mount all API v1 routes
