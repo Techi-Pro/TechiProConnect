@@ -1,0 +1,205 @@
+import { PrismaClient } from '@prisma/client';
+import { hashPassword, comparePassword, createJWT } from '../middlewares/auth.middleware'; 
+import nodemailer from 'nodemailer';
+import crypto from 'crypto';
+import config from '../../../config';
+
+const prisma = new PrismaClient();
+
+// Setup nodemailer transporter (configure your email service provider)
+const transporter = nodemailer.createTransport({
+    service: 'Gmail',  // You can replace Gmail with another email service
+    auth: {
+      user: config.secrets.emailUser,
+      pass: config.secrets.emailPass,
+    },
+  });
+
+  // Function to send verification email
+const sendVerificationEmail = async (user, verificationToken) => {
+    if (process.env.NODE_ENV === 'test') {
+        return Promise.resolve();
+    }
+    const baseURL = config.secrets.baseUrl || 'http://localhost:3000';  
+    const verificationLink = `${baseURL}verify-email?token=${verificationToken}`;
+    const mailOptions = {
+      from: config.secrets.emailUser,
+      to: user.email,
+      subject: 'Verify Your Email',
+      html: `
+  <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto; padding: 20px; border: 1px solid #e0e0e0; border-radius: 10px;">
+    <h2 style="color: #333; text-align: center;">Welcome to TechEasyServe!</h2>
+    <p style="font-size: 16px; color: #555;">
+      Hi ${user.username},<br><br>
+      Thank you for registering with us! Please verify your email address to complete your registration and start accessing our platform.
+    </p>
+    <div style="text-align: center; margin: 30px 0;">
+      <a href="${verificationLink}" style="background-color: #4CAF50; color: white; padding: 12px 25px; text-decoration: none; border-radius: 5px; font-size: 16px;">Verify Email</a>
+    </div>
+    <p style="font-size: 14px; color: #777;">
+      If you did not sign up for this account, please ignore this email.
+    </p>
+    <hr style="border: 0; border-top: 1px solid #e0e0e0;"/>
+    <p style="font-size: 12px; color: #999; text-align: center;">
+      © ${new Date().getFullYear()} TechEasyServe. All rights reserved.
+    </p>
+  </div>
+`
+    };
+    return transporter.sendMail(mailOptions);
+};
+
+// Your user routes implementation here
+
+
+export const getUsers = async (req, res) => {
+    try {
+        const users = await prisma.user.findMany();
+        res.status(200).json(users);
+    } catch (error) {
+        console.error('Error fetching users:', error);
+        res.status(500).json({ message: 'Error fetching users' });
+    }
+};
+
+export const createUser = async (req, res) => {
+    const { username, password, email } = req.body;
+
+    try {
+        // Check if the username or email already exists
+        const existingUser = await prisma.user.findUnique({ where: { username } });
+        const existingEmail = await prisma.user.findUnique({ where: { email } });
+        if (existingUser) {
+            return res.status(400).json({ message: 'Username already taken' });
+        }
+        if (existingEmail) {
+            return res.status(400).json({ message: 'Email already taken' });
+        }
+
+        // Hash the password
+        const hashedPassword = await hashPassword(password);
+
+        // Generate a verification token
+        const verificationToken = crypto.randomBytes(32).toString('hex');
+
+        // Create the user in the database with the verification token
+        const user = await prisma.user.create({
+            data: {
+                username,
+                password: hashedPassword,
+                email,
+                verificationToken,  // Store the token for verification
+            },
+        });
+
+        // Send the verification email
+        await sendVerificationEmail(user, verificationToken);
+
+        // Respond with a success message (don't send the JWT yet)
+        res.status(201).json({ message: 'User created. Please check your email to verify your account.' });
+
+    } catch (error) {
+        console.error('Error creating user:', error);
+        res.status(500).json({ message: 'Error creating user' });
+    }
+};
+
+export const verifyEmail = async (req, res) => {
+  const { token } = req.query;
+
+  try {
+    // Find user by verification token
+    const user = await prisma.user.updateMany({
+      where: {
+        verificationToken: token,
+        isVerified: false
+      },
+      data: {
+        isVerified: true,
+        verificationToken: null,  // Clear the token after verification
+      },
+    });
+
+    if (user.count === 0) {
+      return res.status(400).json({ message: 'Invalid or expired token' });
+    }
+
+    res.status(200).json({ message: 'Email verified successfully' });
+  } catch (error) {
+    console.error('Error verifying email:', error);
+    res.status(500).json({ message: 'Error verifying email' });
+  }
+};
+
+export const loginUser = async (req, res) => {
+    const { username, password } = req.body;
+  
+    try {
+      const user = await prisma.user.findUnique({ where: { username } });
+  
+      if (!user) return res.status(404).json({ message: 'User not found' });
+  
+      if (!user.isVerified) {
+        return res.status(403).json({ message: 'Please verify your email to log in' });
+      }
+  
+      const valid = await comparePassword(password, user.password);
+      if (!valid) return res.status(401).json({ message: 'Invalid password' });
+  
+      const token = createJWT(user);
+      res.status(200).json({ token });
+    } catch (error) {
+      console.error('Error logging in user:', error);
+      res.status(500).json({ message: 'Error logging in user' });
+    }
+  };
+  
+export const getUser = async (req, res) => {
+    const { id } = req.params;
+
+    try {
+        const user = await prisma.user.findUnique({ where: { id } });
+        if (!user) return res.status(404).json({ message: 'User not found' });
+        res.status(200).json(user);
+    } catch (error) {
+        console.error('Error fetching user:', error);
+        res.status(500).json({ message: 'Error fetching user' });
+    }
+};
+
+export const updateUser = async (req, res) => {
+    const { id } = req.params;
+    const { username, password, email } = req.body;
+
+    try {
+        const data: any = { username, email };
+        if (password) {
+            data.password = await hashPassword(password);
+        }
+
+        const updatedUser = await prisma.user.update({
+            where: { id },
+            data,
+        });
+
+        if (!updatedUser) return res.status(404).json({ message: 'User not found' });
+        res.status(200).json(updatedUser);
+    } catch (error) {
+        console.error('Error updating user:', error);
+        res.status(500).json({ message: 'Error updating user' });
+    }
+};
+
+export const deleteUser = async (req, res) => {
+    const { id } = req.params;
+
+    try {
+        const deletedUser = await prisma.user.delete({ where: { id } });
+        if (!deletedUser) return res.status(404).json({ message: 'User not found' });
+
+        res.status(200).json({ message: 'User deleted' });
+    } catch (error) {
+        console.error('Error deleting user:', error);
+        res.status(500).json({ message: 'Error deleting user' });
+    }
+};

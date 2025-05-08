@@ -1,9 +1,21 @@
-import exp from 'constants'
-import e from 'cors'
 import merge from 'lodash.merge'
-import { env } from 'process'
 
 process.env.NODE_ENV = process.env.NODE_ENV || 'development'
+
+const requiredEnv = [
+  'BASE_URL',
+  'DATABASE_URL',
+  'EMAIL_USERNAME',
+  'EMAIL_PASSWORD',
+  'JWT_SECRET',
+  'STAGE'
+];
+
+requiredEnv.forEach((key) => {
+  if (!process.env[key]) {
+    throw new Error(`Missing required environment variable: ${key}`);
+  }
+});
 
 const stage = process.env.STAGE || 'local'
 
@@ -24,7 +36,10 @@ export default merge({
     port: 3000,
     secrets: {
         jwt: process.env.JWT_SECRET,
-        dbUrl: process.env.DATABASE_URL
+        dbUrl: process.env.DATABASE_URL,
+        emailUser: process.env.EMAIL_USERNAME,
+        emailPass: process.env.EMAIL_PASSWORD,
+        baseUrl: process.env.BASE_URL
     }
 
 }, envConfig)

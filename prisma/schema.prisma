@@ -129,6 +129,22 @@ model Payment {
   createdAt     DateTime      @default(now())
 }
 
+model Message {
+  id           Int      @id @default(autoincrement())
+  senderId     String
+  receiverId   String
+  content      String
+  sentAt       DateTime @default(now())
+  appointmentId Int?
+}
+
+model DeviceToken {
+  id        Int      @id @default(autoincrement())
+  userId    String
+  token     String   @unique
+  createdAt DateTime @default(now())
+}
+
 enum PaymentStatus {
   PENDING
   COMPLETED
