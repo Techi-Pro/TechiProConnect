@@ -18,8 +18,8 @@ export const sendVerificationEmail = async (user, verificationToken) => {
     if (process.env.NODE_ENV === 'test') {
         return Promise.resolve();
     }
-    const baseURL = config.secrets.baseUrl || 'http://localhost:3000';
-    const verificationLink = `${baseURL}/api/v1/verify-email?token=${verificationToken}`; // Fixed to include /api/v1
+    const baseURL = (config.secrets.baseUrl || 'http://localhost:3000').replace(/\/+$/, ''); // Remove trailing slashes
+    const verificationLink = `${baseURL}/api/v1/verify-email?token=${verificationToken}`;
     const mailOptions = {
         from: config.secrets.emailUser,
         to: user.email,
@@ -52,7 +52,7 @@ export const verifyEmail = async (token) => {
         where: { verificationToken: token, isVerified: false },
         data: { isVerified: true, verificationToken: null },
     });
-    return user.count > 0; // Return true if updated, false if no user found
+    return user.count > 0;
 };
 
 export const loginUser = async ({ username, password }) => {
