@@ -16,7 +16,8 @@ import notificationRoutes from './notification.routes';
 const router = Router();
 
 // Public routes
-router.get('/verify-email', userController.verifyEmail); // Handle /api/v1/verify-email
+router.get('/verify-email', userController.verifyEmail);
+router.post('/login', userController.loginUser);
 
 // Sub-routers
 router.use('/users', userRoutes);
