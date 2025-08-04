@@ -1,12 +1,12 @@
 import { Router } from 'express';
 import * as notificationController from '../controllers/notification.controller';
-import { requireRole } from '../middlewares/rbac.middleware';
+import { protect, authorize } from '../middlewares/auth.middleware';
 
 const router = Router();
 
 // Register device token (USER or TECHNICIAN)
-router.post('/register', requireRole('USER', 'TECHNICIAN'), notificationController.registerDeviceToken);
+router.post('/register', protect, authorize('USER', 'TECHNICIAN'), notificationController.registerDeviceToken);
 // Send push notification (ADMIN only for now)
-router.post('/send', requireRole('ADMIN'), notificationController.sendPushNotification);
+router.post('/send', protect, authorize('ADMIN'), notificationController.sendPushNotification);
 
 export default router; 

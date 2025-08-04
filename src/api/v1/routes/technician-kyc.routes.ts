@@ -1,32 +1,45 @@
 import { Router } from 'express';
 import * as technicianKycController from '../controllers/technician-kyc.controller';
-import { protect, authorize } from '../middlewares/auth.middleware'; // Import both
+import { protect, authorize } from '../middlewares/auth.middleware';
 
 const router = Router();
 
-// Add logging to verify route registration
-console.log('📋 Registering KYC admin routes...');
+// Add comprehensive logging
+console.log('📋 Setting up KYC routes...');
+console.log('🔍 Middleware imports:', { protect: !!protect, authorize: !!authorize });
+console.log('🔍 Controller imports:', { getKycStatistics: !!technicianKycController.getKycStatistics });
 
-// Admin routes for KYC management
+// Test middleware logging for KYC admin routes
+router.use('/kyc-admin/*', (req, res, next) => {
+  console.log('🔍 KYC Admin route middleware hit:', req.method, req.originalUrl);
+  console.log('🔍 Authorization header:', req.headers.authorization);
+  next();
+});
+
+// Changed from /admin/* to /kyc-admin/* to avoid conflicts
 router.get(
-  '/admin/technicians/pending-review',
+  '/kyc-admin/technicians/pending-review',
   (req, res, next) => {
-    console.log('🔍 Route hit: /admin/technicians/pending-review');
-    console.log('🔍 Method:', req.method);
-    console.log('🔍 Headers:', req.headers.authorization);
+    console.log('🔍 Route: /kyc-admin/technicians/pending-review - middleware 1');
     next();
   },
   protect,
+  (req, res, next) => {
+    console.log('🔍 Route: /kyc-admin/technicians/pending-review - after protect');
+    next();
+  },
   authorize('ADMIN'),
+  (req, res, next) => {
+    console.log('🔍 Route: /kyc-admin/technicians/pending-review - after authorize');
+    next();
+  },
   technicianKycController.getTechniciansForAdminReview
 );
 
 router.post(
-  '/admin/technicians/:technicianId/final-verification',
+  '/kyc-admin/technicians/:technicianId/final-verification',
   (req, res, next) => {
-    console.log('🔍 Route hit: /admin/technicians/:technicianId/final-verification');
-    console.log('🔍 Method:', req.method);
-    console.log('🔍 Headers:', req.headers.authorization);
+    console.log('🔍 Route: /kyc-admin/technicians/:technicianId/final-verification - middleware 1');
     next();
   },
   protect,
@@ -35,20 +48,34 @@ router.post(
 );
 
 router.get(
-  '/admin/kyc-statistics',
+  '/kyc-admin/kyc-statistics',
   (req, res, next) => {
-    console.log('🔍 Route hit: /admin/kyc-statistics');
-    console.log('🔍 Method:', req.method);
-    console.log('🔍 Headers:', req.headers.authorization);
-    console.log('🔍 Full URL:', req.originalUrl);
-    console.log('🔍 Query params:', req.query);
+    console.log('🔍 Route: /kyc-admin/kyc-statistics - middleware 1');
+    console.log('🔍 Request details:', {
+      method: req.method,
+      url: req.url,
+      originalUrl: req.originalUrl,
+      headers: req.headers.authorization
+    });
     next();
   },
   protect,
+  (req, res, next) => {
+    console.log('🔍 Route: /kyc-admin/kyc-statistics - after protect');
+    next();
+  },
   authorize('ADMIN'),
+  (req, res, next) => {
+    console.log('🔍 Route: /kyc-admin/kyc-statistics - after authorize');
+    next();
+  },
   technicianKycController.getKycStatistics
 );
 
-console.log('✅ KYC admin routes registered successfully');
+// Regular technician KYC routes (non-admin)
+router.post('/technicians/:technicianId/firebase-kyc', protect, technicianKycController.submitFirebaseKyc);
+router.get('/technicians/:id/kyc-status', protect, technicianKycController.getKycStatus);
+
+console.log('✅ KYC routes setup complete');
 
 export default router;

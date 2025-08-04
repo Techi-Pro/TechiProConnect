@@ -1,16 +1,17 @@
 import jwt from 'jsonwebtoken';
 import bcrypt from 'bcrypt';
+import { Request, Response, NextFunction } from 'express';
 
-export const comparePassword = async (password, hash) => {
+export const comparePassword = async (password: string, hash: string): Promise<boolean> => {
     return await bcrypt.compare(password, hash);
 }
 
-export const hashPassword = async (password) => {
+export const hashPassword = async (password: string): Promise<string> => {
     return await bcrypt.hash(password, 10);
 }
 
 // Generate JWT for user
-export const createJWT = (user) => {
+export const createJWT = (user: any): string => {
     const token = jwt.sign(
         {
             id: user.id,
@@ -18,7 +19,7 @@ export const createJWT = (user) => {
             email: user.email,
             role: user.role
         },
-        process.env.JWT_SECRET,
+        process.env.JWT_SECRET!,
         {
             expiresIn: '1d',
         }
@@ -28,7 +29,7 @@ export const createJWT = (user) => {
 };
 
 // Middleware to protect routes (Ensure the user is authenticated)
-export const protect = (req, res, next) => {
+export const protect = (req: Request, res: Response, next: NextFunction): void => {
     const bearer = req.headers.authorization;
     console.log('🔍 PROTECT - Authorization header:', bearer);
 
@@ -46,25 +47,25 @@ export const protect = (req, res, next) => {
     }
 
     try {
-        const user = jwt.verify(token, process.env.JWT_SECRET);
+        const user = jwt.verify(token, process.env.JWT_SECRET!);
         req.user = user;
         console.log('✅ PROTECT - User authenticated:', {
-            id: user.id,
-            username: user.username,
-            email: user.email,
-            role: user.role
+            id: (user as any).id,
+            username: (user as any).username,
+            email: (user as any).email,
+            role: (user as any).role
         });
-        console.log('✅ PROTECT - User role specifically:', user.role);
+        console.log('✅ PROTECT - User role specifically:', (user as any).role);
         next();
-    } catch (e) {
+    } catch (e: any) {
         console.error('❌ PROTECT - JWT verification failed:', e.message);
         res.status(401).json({ message: 'Unauthorized: Token is not valid' });
     }
 };
 
 // Middleware to authorize based on roles
-export const authorize = (...roles) => {
-    return (req, res, next) => {
+export const authorize = (...roles: string[]) => {
+    return (req: Request, res: Response, next: NextFunction): void => {
         console.log('🔍 AUTHORIZE - Required roles:', roles);
         console.log('🔍 AUTHORIZE - Request user object:', req.user);
         console.log('🔍 AUTHORIZE - User role from req.user:', req.user?.role);

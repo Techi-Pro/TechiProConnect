@@ -1,4 +1,5 @@
 import { PrismaClient, VerificationStatus, FirebaseKycStatus } from '@prisma/client';
+import { Request, Response } from 'express';
 
 const prisma = new PrismaClient();
 
@@ -6,7 +7,7 @@ const prisma = new PrismaClient();
  * Handle Firebase KYC result submission from mobile app
  * This endpoint receives the Firebase KYC verification results
  */
-export const submitFirebaseKyc = async (req, res) => {
+export const submitFirebaseKyc = async (req: Request, res: Response) => {
   const { technicianId } = req.params;
   const { 
     firebaseKycStatus, 
@@ -16,12 +17,17 @@ export const submitFirebaseKyc = async (req, res) => {
   } = req.body;
 
   try {
+    console.log(`🔧 KYC Controller: Processing Firebase KYC for technician ${technicianId}`);
+    console.log('🔧 User making request:', req.user);
+    
     const technician = await prisma.technician.findUnique({
       where: { id: technicianId }
     });
 
     if (!technician) {
-      return res.status(404).json({ message: 'Technician not found' });
+      console.log(`❌ Technician ${technicianId} not found`);
+      res.status(404).json({ message: 'Technician not found' });
+      return;
     }
 
     // Determine next step based on Firebase result
@@ -32,9 +38,11 @@ export const submitFirebaseKyc = async (req, res) => {
     if (firebaseKycStatus === FirebaseKycStatus.FIREBASE_VERIFIED && confidenceScore > 0.95) {
       nextVerificationStatus = VerificationStatus.VERIFIED;
       requiresAdminReview = false;
+      console.log(`✅ Auto-approving technician ${technicianId} due to high confidence score: ${confidenceScore}`);
     } else if (firebaseKycStatus === FirebaseKycStatus.FIREBASE_REJECTED) {
       nextVerificationStatus = VerificationStatus.REJECTED;
       requiresAdminReview = false;
+      console.log(`❌ Auto-rejecting technician ${technicianId} due to Firebase rejection`);
     }
 
     // Update technician with Firebase KYC results
@@ -59,6 +67,8 @@ export const submitFirebaseKyc = async (req, res) => {
       await notifyAdminForReview(technicianId, firebaseKycData);
     }
 
+    console.log(`✅ Firebase KYC processed for technician ${technicianId}, requires admin review: ${requiresAdminReview}`);
+
     res.status(200).json({ 
       message: 'Firebase KYC results processed successfully',
       technician: updatedTechnician,
@@ -66,7 +76,7 @@ export const submitFirebaseKyc = async (req, res) => {
     });
 
   } catch (error) {
-    console.error('Error processing Firebase KYC:', error);
+    console.error('❌ Error processing Firebase KYC:', error);
     res.status(500).json({ 
       message: 'Error processing Firebase KYC results', 
       error: error.message 
@@ -77,12 +87,15 @@ export const submitFirebaseKyc = async (req, res) => {
 /**
  * Get technicians pending admin review after Firebase KYC
  */
-export const getTechniciansForAdminReview = async (req, res) => {
-  const page = parseInt(req.query.page) || 1;
-  const limit = parseInt(req.query.limit) || 10;
-  const skip = (page - 1) * limit;
-
+export const getTechniciansForAdminReview = async (req: Request, res: Response) => {
   try {
+    console.log('🔧 KYC Controller: Getting technicians for admin review');
+    console.log('🔧 User making request:', req.user);
+    
+    const page = parseInt(req.query.page as string) || 1;
+    const limit = parseInt(req.query.limit as string) || 10;
+    const skip = (page - 1) * limit;
+
     const [technicians, total] = await Promise.all([
       prisma.technician.findMany({
         where: {
@@ -122,6 +135,8 @@ export const getTechniciansForAdminReview = async (req, res) => {
       })
     ]);
 
+    console.log(`🔧 Found ${technicians.length} technicians for admin review (total: ${total})`);
+
     res.status(200).json({ 
       items: technicians, 
       total, 
@@ -130,7 +145,7 @@ export const getTechniciansForAdminReview = async (req, res) => {
     });
 
   } catch (error) {
-    console.error('Error fetching technicians for admin review:', error);
+    console.error('❌ Error fetching technicians for admin review:', error);
     res.status(500).json({ 
       message: 'Error fetching technicians for admin review', 
       error: error.message 
@@ -141,17 +156,22 @@ export const getTechniciansForAdminReview = async (req, res) => {
 /**
  * Admin final verification after Firebase KYC
  */
-export const adminFinalVerification = async (req, res) => {
-  const { technicianId } = req.params;
-  const { decision, adminNotes } = req.body; // decision: 'approve' | 'reject'
-
+export const adminFinalVerification = async (req: Request, res: Response) => {
   try {
+    const { technicianId } = req.params;
+    const { decision, adminNotes } = req.body; // decision: 'approve' | 'reject'
+    
+    console.log(`🔧 KYC Controller: Admin final verification for technician ${technicianId}, decision: ${decision}`);
+    console.log('🔧 User making request:', req.user);
+
     const technician = await prisma.technician.findUnique({
       where: { id: technicianId }
     });
 
     if (!technician) {
-      return res.status(404).json({ message: 'Technician not found' });
+      console.log(`❌ Technician ${technicianId} not found for admin verification`);
+      res.status(404).json({ message: 'Technician not found' });
+      return;
     }
 
     const verificationStatus = decision === 'approve' 
@@ -170,13 +190,15 @@ export const adminFinalVerification = async (req, res) => {
     // Send notification to technician about final decision
     await notifyTechnicianOfDecision(updatedTechnician, decision, adminNotes);
 
+    console.log(`✅ Technician ${technicianId} ${decision}d by admin successfully`);
+
     res.status(200).json({ 
       message: `Technician ${decision}d successfully`,
       technician: updatedTechnician
     });
 
   } catch (error) {
-    console.error('Error in admin final verification:', error);
+    console.error('❌ Error in admin final verification:', error);
     res.status(500).json({ 
       message: 'Error processing admin verification', 
       error: error.message 
@@ -187,12 +209,13 @@ export const adminFinalVerification = async (req, res) => {
 /**
  * Get Firebase KYC statistics for admin dashboard
  */
-export const getKycStatistics = async (req, res) => {
+export const getKycStatistics = async (req: Request, res: Response) => {
   console.log('🎯 getKycStatistics - Controller reached!');
   console.log('🎯 getKycStatistics - Request user:', req.user);
   console.log('🎯 getKycStatistics - Headers auth:', req.headers.authorization);
   console.log('🎯 getKycStatistics - Request method:', req.method);
   console.log('🎯 getKycStatistics - Request path:', req.path);
+  console.log('🎯 getKycStatistics - Request originalUrl:', req.originalUrl);
   
   try {
     console.log('🔍 getKycStatistics - Starting database query...');
@@ -247,15 +270,60 @@ export const getKycStatistics = async (req, res) => {
   }
 };
 
+/**
+ * Get KYC status for a technician
+ */
+export const getKycStatus = async (req: Request, res: Response) => {
+  try {
+    const { id } = req.params;
+
+    console.log(`🔧 KYC Controller: Getting KYC status for technician ${id}`);
+
+    const technician = await prisma.technician.findUnique({
+      where: { id },
+      select: {
+        id: true,
+        firebaseKycStatus: true,
+        verificationStatus: true,
+        firebaseKycData: true,
+        confidenceScore: true,
+        adminNotes: true,
+        kycProcessedAt: true,
+        adminReviewedAt: true
+      }
+    });
+
+    if (!technician) {
+      res.status(404).json({ message: 'Technician not found' });
+      return;
+    }
+
+    res.status(200).json({
+      message: 'KYC status retrieved successfully',
+      kycStatus: technician
+    });
+
+  } catch (error) {
+    console.error('❌ Error getting KYC status:', error);
+    res.status(500).json({
+      message: 'Error getting KYC status',
+      error: error.message
+    });
+  }
+};
+
 // Helper functions
-async function notifyAdminForReview(technicianId: string, kycData: any) {
+async function notifyAdminForReview(technicianId, kycData) {
   // Implement admin notification logic
   // Could be email, push notification, or dashboard alert
-  console.log(`Admin review required for technician: ${technicianId}`);
+  console.log(`📧 Admin review required for technician: ${technicianId}`);
 }
 
-async function notifyTechnicianOfDecision(technician: any, decision: string, notes?: string) {
+async function notifyTechnicianOfDecision(technician, decision, notes) {
   // Implement technician notification logic
   // Email or push notification about final verification decision
-  console.log(`Technician ${technician.id} has been ${decision}d`);
+  console.log(`📧 Technician ${technician.id} has been ${decision}d`);
+  if (notes) {
+    console.log(`📝 Admin notes: ${notes}`);
+  }
 }

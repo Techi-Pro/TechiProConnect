@@ -1,9 +1,9 @@
 import { Router } from 'express';
 import { nearestTechnicianHandler } from '../controllers/nearest-technician.controller';
-// import validators and auth middleware as needed
+import { protect, authorize } from '../middlewares/auth.middleware';
 
 const router = Router();
 
-router.post('/technicians/nearest', nearestTechnicianHandler);
+router.post('/technicians/nearest', protect, authorize('USER', 'ADMIN'), nearestTechnicianHandler);
 
 export default router; 
