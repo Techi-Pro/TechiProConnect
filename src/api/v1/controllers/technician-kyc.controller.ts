@@ -188,13 +188,23 @@ export const adminFinalVerification = async (req, res) => {
  * Get Firebase KYC statistics for admin dashboard
  */
 export const getKycStatistics = async (req, res) => {
+  console.log('🎯 getKycStatistics - Controller reached!');
+  console.log('🎯 getKycStatistics - Request user:', req.user);
+  console.log('🎯 getKycStatistics - Headers auth:', req.headers.authorization);
+  console.log('🎯 getKycStatistics - Request method:', req.method);
+  console.log('🎯 getKycStatistics - Request path:', req.path);
+  
   try {
+    console.log('🔍 getKycStatistics - Starting database query...');
+    
     const stats = await prisma.technician.groupBy({
       by: ['firebaseKycStatus', 'verificationStatus'],
       _count: {
         id: true
       }
     });
+
+    console.log('✅ getKycStatistics - Database query successful:', stats);
 
     const formattedStats = {
       pending: 0,
@@ -220,10 +230,16 @@ export const getKycStatistics = async (req, res) => {
       }
     });
 
+    console.log('✅ getKycStatistics - Formatted stats:', formattedStats);
+    console.log('✅ getKycStatistics - Sending response...');
+
     res.status(200).json(formattedStats);
 
   } catch (error) {
-    console.error('Error fetching KYC statistics:', error);
+    console.error('❌ getKycStatistics - Error occurred:', error);
+    console.error('❌ getKycStatistics - Error message:', error.message);
+    console.error('❌ getKycStatistics - Error stack:', error.stack);
+    
     res.status(500).json({ 
       message: 'Error fetching KYC statistics', 
       error: error.message 
