@@ -399,6 +399,160 @@ const options = {
             },
           },
         },
+        FirebaseKycRequest: {
+          type: 'object',
+          properties: {
+            firebaseKycStatus: {
+              type: 'string',
+              enum: ['PENDING', 'PROCESSING', 'FIREBASE_VERIFIED', 'FIREBASE_REJECTED', 'FIREBASE_ERROR', 'ADMIN_REVIEW_REQUIRED'],
+              description: 'Firebase KYC verification status',
+            },
+            firebaseKycData: {
+              type: 'object',
+              description: 'Firebase KYC verification results and metadata',
+            },
+            documentUrls: {
+              type: 'array',
+              items: {
+                type: 'string',
+              },
+              description: 'Array of Firebase Storage document URLs',
+            },
+            confidenceScore: {
+              type: 'number',
+              minimum: 0,
+              maximum: 1,
+              description: 'Firebase ML confidence score (0.0 - 1.0)',
+            },
+          },
+          required: ['firebaseKycStatus', 'firebaseKycData', 'confidenceScore'],
+        },
+        FirebaseKycResponse: {
+          type: 'object',
+          properties: {
+            message: {
+              type: 'string',
+              description: 'Success message',
+            },
+            technician: {
+              $ref: '#/components/schemas/Technician',
+            },
+            requiresAdminReview: {
+              type: 'boolean',
+              description: 'Whether the submission requires admin review',
+            },
+          },
+        },
+        AdminVerificationRequest: {
+          type: 'object',
+          properties: {
+            decision: {
+              type: 'string',
+              enum: ['approve', 'reject'],
+              description: 'Admin decision on technician verification',
+            },
+            adminNotes: {
+              type: 'string',
+              description: 'Optional notes from admin',
+            },
+          },
+          required: ['decision'],
+        },
+        KycStatistics: {
+          type: 'object',
+          properties: {
+            pending: {
+              type: 'integer',
+              description: 'Number of technicians with pending Firebase KYC',
+            },
+            firebaseVerified: {
+              type: 'integer',
+              description: 'Number of technicians verified by Firebase',
+            },
+            firebaseRejected: {
+              type: 'integer',
+              description: 'Number of technicians rejected by Firebase',
+            },
+            adminApproved: {
+              type: 'integer',
+              description: 'Number of technicians approved by admin',
+            },
+            adminRejected: {
+              type: 'integer',
+              description: 'Number of technicians rejected by admin',
+            },
+            awaitingAdminReview: {
+              type: 'integer',
+              description: 'Number of technicians awaiting admin review',
+            },
+          },
+        },
+        PaginatedTechnicianForReview: {
+          type: 'object',
+          properties: {
+            items: {
+              type: 'array',
+              items: {
+                type: 'object',
+                properties: {
+                  id: {
+                    type: 'string',
+                    description: 'Technician ID',
+                  },
+                  username: {
+                    type: 'string',
+                    description: 'Technician username',
+                  },
+                  email: {
+                    type: 'string',
+                    description: 'Technician email',
+                  },
+                  firebaseKycStatus: {
+                    type: 'string',
+                    description: 'Firebase KYC status',
+                  },
+                  firebaseKycData: {
+                    type: 'object',
+                    description: 'Firebase KYC data',
+                  },
+                  verificationStatus: {
+                    type: 'string',
+                    description: 'Final verification status',
+                  },
+                  createdAt: {
+                    type: 'string',
+                    format: 'date-time',
+                    description: 'Creation timestamp',
+                  },
+                  category: {
+                    type: 'object',
+                    properties: {
+                      id: {
+                        type: 'integer',
+                      },
+                      name: {
+                        type: 'string',
+                      },
+                    },
+                  },
+                },
+              },
+              description: 'List of technicians for review',
+            },
+            total: {
+              type: 'integer',
+              description: 'Total number of technicians',
+            },
+            page: {
+              type: 'integer',
+              description: 'Current page number',
+            },
+            pageSize: {
+              type: 'integer',
+              description: 'Number of items per page',
+            },
+          },
+        },
       },
     },
     security: [
@@ -419,6 +573,7 @@ const options = {
       { name: 'Messages', description: 'Operations related to chat messages' },
       { name: 'Notifications', description: 'Operations related to push notifications' },
       { name: 'Auth', description: 'Authentication and authorization endpoints' },
+      { name: 'Firebase KYC', description: 'Firebase KYC verification and admin review endpoints' },
     ],
     paths: {
       '/users': {
@@ -1048,6 +1203,172 @@ const options = {
               content: {
                 'application/json': {
                   schema: { $ref: '#/components/schemas/VerifyEmailResponse' },
+                },
+              },
+            },
+            '500': {
+              description: 'Server error',
+              content: {
+                'application/json': {
+                  schema: { type: 'object', properties: { message: { type: 'string' } } },
+                },
+              },
+            },
+          },
+        },
+      },
+      '/technicians/{technicianId}/firebase-kyc': {
+        post: {
+          summary: 'Submit Firebase KYC verification results',
+          tags: ['Firebase KYC'],
+          parameters: [
+            {
+              in: 'path',
+              name: 'technicianId',
+              required: true,
+              schema: { type: 'string' },
+              description: 'ID of the technician submitting KYC',
+            },
+          ],
+          requestBody: {
+            required: true,
+            content: {
+              'application/json': {
+                schema: { $ref: '#/components/schemas/FirebaseKycRequest' },
+              },
+            },
+          },
+          responses: {
+            '200': {
+              description: 'Firebase KYC results processed successfully',
+              content: {
+                'application/json': {
+                  schema: { $ref: '#/components/schemas/FirebaseKycResponse' },
+                },
+              },
+            },
+            '404': {
+              description: 'Technician not found',
+              content: {
+                'application/json': {
+                  schema: { type: 'object', properties: { message: { type: 'string' } } },
+                },
+              },
+            },
+            '500': {
+              description: 'Server error',
+              content: {
+                'application/json': {
+                  schema: { type: 'object', properties: { message: { type: 'string' } } },
+                },
+              },
+            },
+          },
+        },
+      },
+      '/admin/technicians/pending-review': {
+        get: {
+          summary: 'Get technicians pending admin review after Firebase KYC',
+          tags: ['Firebase KYC'],
+          parameters: [
+            {
+              in: 'query',
+              name: 'page',
+              schema: { type: 'integer' },
+              description: 'Page number',
+            },
+            {
+              in: 'query',
+              name: 'limit',
+              schema: { type: 'integer' },
+              description: 'Page size',
+            },
+          ],
+          responses: {
+            '200': {
+              description: 'Paginated list of technicians for review',
+              content: {
+                'application/json': {
+                  schema: { $ref: '#/components/schemas/PaginatedTechnicianForReview' },
+                },
+              },
+            },
+            '500': {
+              description: 'Server error',
+              content: {
+                'application/json': {
+                  schema: { type: 'object', properties: { message: { type: 'string' } } },
+                },
+              },
+            },
+          },
+        },
+      },
+      '/admin/technicians/{technicianId}/final-verification': {
+        post: {
+          summary: 'Admin final verification decision',
+          tags: ['Firebase KYC'],
+          parameters: [
+            {
+              in: 'path',
+              name: 'technicianId',
+              required: true,
+              schema: { type: 'string' },
+              description: 'ID of the technician to verify',
+            },
+          ],
+          requestBody: {
+            required: true,
+            content: {
+              'application/json': {
+                schema: { $ref: '#/components/schemas/AdminVerificationRequest' },
+              },
+            },
+          },
+          responses: {
+            '200': {
+              description: 'Verification decision processed successfully',
+              content: {
+                'application/json': {
+                  schema: {
+                    type: 'object',
+                    properties: {
+                      message: { type: 'string' },
+                      technician: { $ref: '#/components/schemas/Technician' },
+                    },
+                  },
+                },
+              },
+            },
+            '404': {
+              description: 'Technician not found',
+              content: {
+                'application/json': {
+                  schema: { type: 'object', properties: { message: { type: 'string' } } },
+                },
+              },
+            },
+            '500': {
+              description: 'Server error',
+              content: {
+                'application/json': {
+                  schema: { type: 'object', properties: { message: { type: 'string' } } },
+                },
+              },
+            },
+          },
+        },
+      },
+      '/admin/kyc-statistics': {
+        get: {
+          summary: 'Get Firebase KYC statistics for admin dashboard',
+          tags: ['Firebase KYC'],
+          responses: {
+            '200': {
+              description: 'KYC statistics',
+              content: {
+                'application/json': {
+                  schema: { $ref: '#/components/schemas/KycStatistics' },
                 },
               },
             },

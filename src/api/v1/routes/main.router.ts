@@ -12,6 +12,7 @@ import adminRoutes from './admin.routes';
 import nearestTechnicianRoutes from './nearest-technician.routes';
 import messageRoutes from './message.routes';
 import notificationRoutes from './notification.routes';
+import technicianKycRoutes from './technician-kyc.routes';
 
 const router = Router();
 
@@ -32,5 +33,6 @@ router.use('/admin', adminRoutes);
 router.use('/nearest-technicians', nearestTechnicianRoutes);
 router.use('/messages', messageRoutes);
 router.use('/notifications', notificationRoutes);
+router.use('/', technicianKycRoutes); // Firebase KYC routes
 
 export default router;

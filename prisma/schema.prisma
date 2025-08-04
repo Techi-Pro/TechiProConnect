@@ -13,22 +13,36 @@ model Technician {
   id                 String             @id @default(uuid())
   username           String             @unique // Changed from name to username
   password           String // Added password field
-  email           String   @unique
-  isVerified      Boolean  @default(false)
-  verificationToken String?
+  email              String             @unique
+  isVerified         Boolean            @default(false)
+  verificationToken  String?
   categoryId         Int
   category           Category           @relation(fields: [categoryId], references: [id])
   role               Role               @default(TECHNICIAN)
   services           Service[]
   ratings            Rating[]
   location           Location?
+  
+  // Traditional document upload fields (kept for backward compatibility)
   documents          String? // URL or file path of the uploaded document
-  verificationStatus VerificationStatus @default(PENDING) // Document verification status
+  
+  // Firebase KYC Integration fields
+  firebaseKycStatus  FirebaseKycStatus? @default(PENDING)
+  firebaseKycData    Json?              // Store Firebase KYC results and metadata
+  confidenceScore    Float?             // Firebase ML confidence score (0.0 - 1.0)
+  documentUrls       Json?              // Array of Firebase Storage document URLs
+  biometricData      Json?              // Biometric verification data from Firebase
+  adminNotes         String?            // Admin verification notes
+  kycProcessedAt     DateTime?          // When Firebase KYC was processed
+  adminReviewedAt    DateTime?          // When admin reviewed the application
+  
+  verificationStatus VerificationStatus @default(PENDING) // Final verification status
   availabilityStatus AvailabilityStatus @default(AVAILABLE)  // New field for tracking availability
   createdAt          DateTime           @default(now())
   updatedAt          DateTime           @updatedAt
   ServiceRequest     ServiceRequest[]
   Appointment        Appointment[]
+  KycAuditLog        KycAuditLog[]      // Audit trail for KYC actions
 }
 
 model User {
@@ -109,6 +123,7 @@ model Appointment {
   status          AppointmentStatus @default(SCHEDULED) // Status of the appointment
   createdAt       DateTime          @default(now())
   Payment         Payment[]
+  messages        Message[]         // Add relation to messages
 }
 
 model RateCard {
@@ -130,12 +145,13 @@ model Payment {
 }
 
 model Message {
-  id           Int      @id @default(autoincrement())
-  senderId     String
-  receiverId   String
-  content      String
-  sentAt       DateTime @default(now())
+  id            Int          @id @default(autoincrement())
+  senderId      String
+  receiverId    String
+  content       String
+  sentAt        DateTime     @default(now())
   appointmentId Int?
+  appointment   Appointment? @relation(fields: [appointmentId], references: [id])
 }
 
 model DeviceToken {
@@ -143,6 +159,19 @@ model DeviceToken {
   userId    String
   token     String   @unique
   createdAt DateTime @default(now())
+}
+
+// New model for KYC audit trail
+model KycAuditLog {
+  id             Int                @id @default(autoincrement())
+  technicianId   String
+  technician     Technician         @relation(fields: [technicianId], references: [id])
+  action         KycAuditAction
+  performedBy    String             // User ID who performed the action
+  previousStatus VerificationStatus?
+  newStatus      VerificationStatus?
+  details        Json?              // Additional details about the action
+  createdAt      DateTime           @default(now())
 }
 
 enum PaymentStatus {
@@ -157,6 +186,25 @@ enum VerificationStatus {
   REJECTED
 }
 
+enum FirebaseKycStatus {
+  PENDING               // Initial state, no Firebase processing yet
+  PROCESSING            // Firebase is currently processing
+  FIREBASE_VERIFIED     // Firebase successfully verified the documents
+  FIREBASE_REJECTED     // Firebase rejected the documents
+  FIREBASE_ERROR        // Error during Firebase processing
+  ADMIN_REVIEW_REQUIRED // Requires manual admin review
+}
+
+enum KycAuditAction {
+  FIREBASE_KYC_SUBMITTED
+  FIREBASE_KYC_VERIFIED
+  FIREBASE_KYC_REJECTED
+  ADMIN_APPROVED
+  ADMIN_REJECTED
+  ADMIN_REQUESTED_MORE_INFO
+  DOCUMENTS_RESUBMITTED
+}
+
 enum AppointmentStatus {
   SCHEDULED
   COMPLETED
@@ -169,7 +217,6 @@ enum RequestStatus {
   COMPLETED
   CANCELLED
 }
-
 
 enum AvailabilityStatus {
   AVAILABLE   // Ready for a new job
